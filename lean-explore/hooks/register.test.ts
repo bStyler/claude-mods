@@ -24,6 +24,9 @@ function world(on: any, files: Map<string, string>, os = 'Windows_NT') {
   on('command.register', () => ({ value: undefined }))
   on('command.run', () => ({ text: '' }))
   on('ui.toast', (_$: any, e: any) => { seen.toasts.push(JSON.stringify(e)); return { value: undefined } })
+  on('ui.invalidate', () => ({ value: undefined }))
+  // the engine's own footer: one Text per label
+  on('ui.render', ($: any, e: any) => { const { Box, Text } = $.ui.resolve(e); return Box({ children: (e.props.modes ?? []).map((m: string) => Text({ children: m })) }) })
   return seen
 }
 
@@ -75,4 +78,39 @@ test('macOS and Linux use mv', async ($: any, on: any) => {
   await run($, 'off')
   expect(seen.argv[0][0]).toBe('mv')
   expect(files.has(PARKED)).toBe(true)
+})
+
+const footer = async ($: any, surface: string) => {
+  const ui = await $.ui.mount({ plugin: 'lean-explore', surface, component: 'SessionMode', props: { modes: ['auto'] } })
+  const texts = [String((await ui.find({ type: 'Text', text: /Explore/ }))?.text ?? ''), String((await ui.find({ type: 'Text', text: /auto/ }))?.text ?? '')]
+  await ui.unmount()
+  return texts.join(' | ')
+}
+
+test('footer says Haiku on the terminal and the desktop app when the agent loaded', async ($: any, on: any) => {
+  const files = new Map([[LIVE, AGENT]])
+  world(on, files)
+  await start($)
+  for (const surface of ['terminal', 'desktop']) {
+    const r = await footer($, surface)
+    expect(r).toContain('Explore: Haiku')
+    expect(r).toContain('auto')
+  }
+})
+
+test('footer says built-in for a custom file, and flags a toggle waiting for the next session', async ($: any, on: any) => {
+  const files = new Map([[LIVE, '---\nname: Explore\nmodel: sonnet\n---\nmine']])
+  world(on, files)
+  await start($)
+  expect(await footer($, 'desktop')).toContain('Explore: built-in')
+  files.clear(); files.set(LIVE, AGENT)
+  await start($)
+  await run($, 'off')
+  expect(await footer($, 'terminal')).toContain('Explore: Haiku (built-in next session)')
+})
+
+test('first install session is still on the built-in agent', async ($: any, on: any) => {
+  world(on, new Map())
+  await start($)
+  expect(await footer($, 'desktop')).toContain('Explore: built-in (Haiku next session)')
 })

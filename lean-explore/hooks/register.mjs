@@ -71,6 +71,21 @@ async function writeAgent($, p) {
 
 const NEXT = 'Start a new session for it to apply.'
 
+// Footer label. `loaded` is what this session started with (agent files load at start);
+// `current` is the file on disk now, which a toggle or the first install changes.
+const footer = { loaded: undefined, current: undefined }
+const kind = s => (s === 'on' ? 'Haiku' : 'built-in')
+
+export function footerLabel() {
+  if (!footer.loaded) return ''
+  const label = `Explore: ${kind(footer.loaded)}`
+  return kind(footer.current) === kind(footer.loaded) ? label : `${label} (${kind(footer.current)} next session)`
+}
+
+function track($, p) {
+  return state($, p).then(s => { footer.current = s; $.ui.invalidate('ui.render') })
+}
+
 export const register = on => {
   // First run installs the agent; a newer mod version refreshes our own file. Never touches a custom one.
   on('session.start', async ($, e, next) => {
@@ -81,14 +96,25 @@ export const register = on => {
     try {
       const p = await paths($)
       const now = await state($, p)
+      footer.loaded = now
+      footer.current = now
       if (now === 'missing') {
         await writeAgent($, p)
         $.ui.toast(`lean-explore: installed the Haiku Explore agent. ${NEXT} /explore-haiku off undoes it.`, { timeoutMs: 10000 })
       } else if (now === 'on' && (await $.fs.read(p.live)) !== AGENT) {
         await writeAgent($, p)
       }
+      await track($, p)
     } catch { /* never block a session start */ }
     return out
+  })
+
+  // Same short label on the terminal and the desktop app.
+  on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
+    const label = footerLabel()
+    if (!label) return next(e)
+    const modes = Array.isArray(e.props && e.props.modes) ? e.props.modes : []
+    return next({ ...e, props: { ...e.props, modes: [...modes, label] } })
   })
 
   on('command.run', { command: 'explore-haiku' }, async ($, e) => {
@@ -105,6 +131,7 @@ export const register = on => {
       if (now === 'missing') return { text: 'Lean Explore agent is not installed, so there is nothing to turn off.' }
       const r = await move($, p.live, p.parked)
       if (r.exitCode !== 0) return { text: `Could not park the agent: ${String(r.stderr || r.stdout).trim()}` }
+      await track($, p)
       return { text: `Lean Explore agent is now off; the built-in Explore is back. ${NEXT}` }
     }
     if (now === 'off') {
@@ -113,6 +140,7 @@ export const register = on => {
     } else {
       await writeAgent($, p)
     }
+    await track($, p)
     return { text: `Lean Explore agent is now on. ${NEXT}` }
   })
 }
