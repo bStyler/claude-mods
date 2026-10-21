@@ -1,6 +1,6 @@
 {
   "name": "claude-super-mods",
-  "description": "Claude Code mods: a /goal progress bar, a prompt-cache keeper (both built on Nate Herk's claude-code-mods, MIT) and a lean Haiku Explore agent",
+  "description": "Claude Code mods: a /goal progress bar, a prompt-cache keeper (both built on Nate Herk's claude-code-mods, MIT), a lean Haiku Explore agent and a /memorize reminder",
   "owner": {
     "name": "bStyler"
   },
@@ -19,6 +19,11 @@
       "name": "lean-explore",
       "source": "./lean-explore",
       "description": "Replaces the built-in Explore subagent with a lean Haiku one (Read/Grep/Glob only, short answers); /lean-explore on|off|status"
+    },
+    {
+      "name": "memory-guard",
+      "source": "./memory-guard",
+      "description": "Spots sessions worth remembering, nudges once to run /memorize, and queues the ones that ended without it for the next session. Files into your wiki if you have one, else Claude Code's auto-memory."
     }
   ]
 }

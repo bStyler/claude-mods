@@ -1,0 +1,4 @@
+{
+  "description": "Memory Guard hooks module",
+  "modules": ["./register.mjs"]
+}
