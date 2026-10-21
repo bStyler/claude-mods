@@ -386,8 +386,10 @@ export const register = (on) => {
     await ensure($)
     if (!watched() || !cfg.ui.band) return below
     const el = $.ui.resolve(e)
-    const mine = drawBand($, el)
-    if (!mine) return below
+    const drawn = drawBand($, el)
+    if (!drawn) return below
+    // Desktop: the same gap the other rows in the band keep from Token Optimizer's card
+    const mine = e.surface === 'desktop' ? el.Box({ key: 'memory-guard', marginTop: 'md', children: [drawn] }) : drawn
     return el.Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
   })
 
