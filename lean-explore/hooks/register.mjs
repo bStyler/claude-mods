@@ -143,7 +143,8 @@ function desktopChip($, e, below) {
   const row = [chip]
   // The amber state needs action, so its button sits on the chip itself.
   if (!lean && !pending() && view.loaded !== 'custom') row.push(act('Turn on', 'on'))
-  const mine = Box({ key: 'lean-explore', flexDirection: 'column', paddingTop: 'sm', children: [Box({ flexDirection: 'row', columnGap: 2, children: row }), hoverCard] })
+  // marginTop: the same gap the other rows in the band keep from Token Optimizer's card
+  const mine = Box({ key: 'lean-explore', flexDirection: 'column', marginTop: 'md', children: [Box({ flexDirection: 'row', columnGap: 2, children: row }), hoverCard] })
   return Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
 }
 
