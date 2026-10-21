@@ -1,0 +1,19 @@
+{
+  "name": "eliran-mods",
+  "description": "Eliran's Claude Code mods: a /goal progress bar and a prompt-cache keeper, built on Nate Herk's claude-code-mods (MIT)",
+  "owner": {
+    "name": "Eliran Mukdasi"
+  },
+  "plugins": [
+    {
+      "name": "goal-meter",
+      "source": "./goal-meter",
+      "description": "A progress bar for /goal built from Claude's own task plan: compact one-line view by default, ETA, and every chat's goal in /goals"
+    },
+    {
+      "name": "cache-keeper",
+      "source": "./cache-keeper",
+      "description": "Keeps a big chat's prompt cache warm (/keepwarm), warns before an expensive cold restart, shows every local chat on one board (/board), and hands a chat off to a fresh one (/handoff)"
+    }
+  ]
+}
