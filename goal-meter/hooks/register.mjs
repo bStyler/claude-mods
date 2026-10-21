@@ -12,7 +12,7 @@
 //   /goals compact|full|hide|show (saved for every chat; hide also hides the footer),
 //   /goals clear (removes this chat's goal, running or finished), /goals strict on|off.
 // - A finished goal stays on screen 2 minutes.
-// - HelloChakra fork of Nate Herk's goal-meter 1.0.0; changes listed in CHANGES.md.
+// - Fork of Nate Herk's goal-meter 1.0.0; changes listed in CHANGES.md.
 // - Each chat writes ~/.claude/mods-data/goal-meter/<session>.json for /goals.
 //   The mod sends no model requests of its own.
 

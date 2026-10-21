@@ -1,4 +1,4 @@
-# cache-keeper (HelloChakra changes)
+# cache-keeper (fork changes)
 
 Based on Nate Herk's `cache-keeper` 1.0.0. To rebase onto a new upstream version:
 diff upstream 1.0.0 against the new one, then reapply the list below to the new code.
@@ -22,7 +22,7 @@ the whole chat, so on a cold cache it pays the very rewrite this mod warns about
 
 ## 1.2.2 - 2026-10-21
 
-- Author is now Eliran Mukdasi; Nate Herk stays credited in the description and LICENSE.
+- Author is now bStyler; Nate Herk stays credited in the description and LICENSE.
 
 ## 1.2.1 - 2026-10-21
 

@@ -1,15 +1,33 @@
 # claude-mods
 
-Two Claude Code mods, published as a plugin marketplace named `eliran-mods`.
+Three Claude Code mods, published as a plugin marketplace named `claude-super-mods`.
 
 | Mod | What you get |
 |---|---|
 | **goal-meter** 1.2.1 | A progress bar for `/goal`, built from Claude's own task plan. One line by default. `/goals` opens the full task list. |
 | **cache-keeper** 1.3.0 | A band above the prompt with the model, effort, context bar, plan limits (with the 5h reset) and cache state, so no status line is needed. Keeps a long chat's prompt cache warm (`/keepwarm 2`), asks before an expensive cold send, shows every local chat (`/board`), and hands a chat off (`/handoff`). Every compaction without its own instructions is told what to keep, and the band shows how much it saved. |
+| **lean-explore** 1.0.0 | Replaces the built-in Explore subagent (the one that does codebase searches) with a lean one: Haiku, low effort, Read/Grep/Glob only, short answers with file:line. In tests it used about 3x fewer tokens and ran twice as fast, with the same answers. `/explore-haiku on\|off\|status` toggles it. |
+
+
+## lean-explore
+
+A plugin cannot replace a built-in agent with an agent of its own (plugin agents get a
+`lean-explore:` prefix). So on the first session the mod writes `~/.claude/agents/Explore.md`
+itself, marked with a comment line so it never touches an `Explore.md` you wrote.
+
+- `/explore-haiku status` shows whether it is on, off, or blocked by your own `Explore.md`.
+- `/explore-haiku off` renames it to `Explore.md.off`; the built-in Explore comes back.
+- `/explore-haiku on` brings it back.
+- Agent files load when a session starts, so every change applies from the next session.
+- Before uninstalling, run `/explore-haiku off`, or delete `~/.claude/agents/Explore.md`.
+  Uninstalling the mod does not remove the file.
+
+When a search needs judgment (a review, a design call), ask for a general-purpose agent or
+pass `model: "opus"`: Haiku finds things well but checks less of what it reads.
 
 ## Credit
 
-Both mods are built on Nate Herk's [claude-code-mods](https://github.com/nateherkai/claude-code-mods)
+goal-meter and cache-keeper are built on Nate Herk's [claude-code-mods](https://github.com/nateherkai/claude-code-mods)
 (MIT). goal-meter is a fork of his goal-meter 1.0.0, and cache-keeper is based on his
 cache-keeper 1.0.0. Each mod's `CHANGES.md` lists what differs from upstream. cache-keeper 1.3.0 also borrows three ideas from JayGPTPro's [Smart PreCompact](https://github.com/JayGPTPro/smart-precompact). MIT, see `LICENSE`.
 
@@ -19,8 +37,9 @@ Needs a Claude Code build with mods (function-hook plugins). Works on Windows, m
 
 ```
 claude plugin marketplace add bStyler/claude-mods
-claude plugin install goal-meter@eliran-mods
-claude plugin install cache-keeper@eliran-mods
+claude plugin install goal-meter@claude-super-mods
+claude plugin install cache-keeper@claude-super-mods
+claude plugin install lean-explore@claude-super-mods
 ```
 
 Then quit Claude Code and start it again. `/reload-plugins` and `/clear` do not load mod code.
@@ -66,9 +85,10 @@ The `g` key on the bar only works after Ctrl+X Tab focuses the bar. From the pro
 ## Update
 
 ```
-claude plugin marketplace update eliran-mods
-claude plugin update goal-meter@eliran-mods
-claude plugin update cache-keeper@eliran-mods
+claude plugin marketplace update claude-super-mods
+claude plugin update goal-meter@claude-super-mods
+claude plugin update cache-keeper@claude-super-mods
+claude plugin update lean-explore@claude-super-mods
 ```
 
 Restart Claude Code afterwards. When changing code, raise `version` in the mod's
@@ -77,9 +97,10 @@ Restart Claude Code afterwards. When changing code, raise `version` in the mod's
 ## Uninstall
 
 ```
-claude plugin uninstall goal-meter@eliran-mods
-claude plugin uninstall cache-keeper@eliran-mods
-claude plugin marketplace remove eliran-mods
+claude plugin uninstall goal-meter@claude-super-mods
+claude plugin uninstall cache-keeper@claude-super-mods
+claude plugin uninstall lean-explore@claude-super-mods
+claude plugin marketplace remove claude-super-mods
 ```
 
 Saved state lives in `~/.claude/mods-data/` and can be deleted.

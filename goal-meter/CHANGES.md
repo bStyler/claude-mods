@@ -1,4 +1,4 @@
-# goal-meter (HelloChakra fork)
+# goal-meter (fork)
 
 Forked from Nate Herk's `goal-meter` 1.0.0 (`~/.claude/nateherk-mods/goal-meter`).
 Never enable this and `goal-meter@nateherk-mods` together: same name, same tool.
@@ -8,7 +8,7 @@ then reapply the list below to the new code.
 
 ## 1.2.1 - 2026-10-21
 
-- Author is now Eliran Mukdasi; Nate Herk stays credited in the description and LICENSE.
+- Author is now bStyler; Nate Herk stays credited in the description and LICENSE.
 
 ## 1.2.0 - 2026-10-21
 

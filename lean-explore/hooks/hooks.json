@@ -1,0 +1,4 @@
+{
+  "description": "Lean Explore hooks module",
+  "modules": ["./register.mjs"]
+}
