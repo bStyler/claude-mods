@@ -6,7 +6,7 @@ Three Claude Code mods, published as a plugin marketplace named `claude-super-mo
 |---|---|
 | **goal-meter** 1.2.1 | A progress bar for `/goal`, built from Claude's own task plan. One line by default. `/goals` opens the full task list. |
 | **cache-keeper** 1.3.0 | A band above the prompt with the model, effort, context bar, plan limits (with the 5h reset) and cache state, so no status line is needed. Keeps a long chat's prompt cache warm (`/keepwarm 2`), asks before an expensive cold send, shows every local chat (`/board`), and hands a chat off (`/handoff`). Every compaction without its own instructions is told what to keep, and the band shows how much it saved. |
-| **lean-explore** 1.1.0 | Replaces the built-in Explore subagent (the one that does codebase searches) with a lean one: Haiku, low effort, Read/Grep/Glob only, short answers with file:line. In tests it used about 3x fewer tokens and ran twice as fast, with the same answers. `/explore-haiku on\|off\|status` toggles it. |
+| **lean-explore** 1.2.0 | Replaces the built-in Explore subagent (the one that does codebase searches) with a lean one: Haiku, low effort, Read/Grep/Glob only, short answers with file:line. In tests it used about 3x fewer tokens and ran twice as fast, with the same answers. `/lean-explore on\|off\|status` toggles it. |
 
 
 ## lean-explore
@@ -16,11 +16,11 @@ A plugin cannot replace a built-in agent with an agent of its own (plugin agents
 itself, marked with a comment line so it never touches an `Explore.md` you wrote.
 
 - The footer shows `Explore: Haiku` or `Explore: built-in` (terminal and desktop app). After a toggle it adds what the next session will use, for example `Explore: Haiku (built-in next session)`.
-- `/explore-haiku status` shows whether it is on, off, or blocked by your own `Explore.md`.
-- `/explore-haiku off` renames it to `Explore.md.off`; the built-in Explore comes back.
-- `/explore-haiku on` brings it back.
+- `/lean-explore status` shows whether it is on, off, or blocked by your own `Explore.md`.
+- `/lean-explore off` renames it to `Explore.md.off`; the built-in Explore comes back.
+- `/lean-explore on` brings it back.
 - Agent files load when a session starts, so every change applies from the next session.
-- Before uninstalling, run `/explore-haiku off`, or delete `~/.claude/agents/Explore.md`.
+- Before uninstalling, run `/lean-explore off`, or delete `~/.claude/agents/Explore.md`.
   Uninstalling the mod does not remove the file.
 
 When a search needs judgment (a review, a design call), ask for a general-purpose agent or

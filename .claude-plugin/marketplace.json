@@ -18,7 +18,7 @@
     {
       "name": "lean-explore",
       "source": "./lean-explore",
-      "description": "Replaces the built-in Explore subagent with a lean Haiku one (Read/Grep/Glob only, short answers); /explore-haiku on|off|status"
+      "description": "Replaces the built-in Explore subagent with a lean Haiku one (Read/Grep/Glob only, short answers); /lean-explore on|off|status"
     }
   ]
 }

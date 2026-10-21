@@ -3,7 +3,9 @@
 // so the mod writes ~/.claude/agents/Explore.md itself. "off" parks it as Explore.md.off.
 // Agent files load at session start: every change applies from the next session.
 
-const MARK = '# Written by the lean-explore mod. /explore-haiku off parks it.'
+// OWNER is the stable part of the marker; files from 1.0 and 1.1 end in "/explore-haiku off parks it."
+const OWNER = '# Written by the lean-explore mod.'
+const MARK = `${OWNER} /lean-explore off parks it.`
 
 export const AGENT = `---
 name: Explore
@@ -39,7 +41,7 @@ async function paths($) {
 }
 
 async function isOurs($, path) {
-  try { return (await $.fs.read(path)).includes(MARK) } catch { return false }
+  try { return (await $.fs.read(path)).includes(OWNER) } catch { return false }
 }
 
 // on: our file is active · off: parked · custom: someone else's Explore.md, left alone · missing
@@ -91,7 +93,7 @@ export const register = on => {
   on('session.start', async ($, e, next) => {
     const out = await next(e)
     try {
-      await $.command.register({ name: 'explore-haiku', description: 'Lean Haiku Explore agent: /explore-haiku on|off|status', immediate: true })
+      await $.command.register({ name: 'lean-explore', description: 'Lean Haiku Explore agent: /lean-explore on|off|status', immediate: true })
     } catch { /* name taken */ }
     try {
       const p = await paths($)
@@ -100,7 +102,7 @@ export const register = on => {
       footer.current = now
       if (now === 'missing') {
         await writeAgent($, p)
-        $.ui.toast(`lean-explore: installed the Haiku Explore agent. ${NEXT} /explore-haiku off undoes it.`, { timeoutMs: 10000 })
+        $.ui.toast(`lean-explore: installed the Haiku Explore agent. ${NEXT} /lean-explore off undoes it.`, { timeoutMs: 10000 })
       } else if (now === 'on' && (await $.fs.read(p.live)) !== AGENT) {
         await writeAgent($, p)
       }
@@ -117,13 +119,13 @@ export const register = on => {
     return next({ ...e, props: { ...e.props, modes: [...modes, label] } })
   })
 
-  on('command.run', { command: 'explore-haiku' }, async ($, e) => {
+  on('command.run', { command: 'lean-explore' }, async ($, e) => {
     const want = String(e.args ?? '').trim().toLowerCase()
     const p = await paths($)
     const now = await state($, p)
     if (want !== 'on' && want !== 'off') {
       const said = { on: 'on', off: 'off (parked as Explore.md.off)', missing: 'not installed', custom: 'off - a custom Explore.md not written by this mod is in use' }[now]
-      return { text: `Lean Explore agent: ${said}. Type /explore-haiku on or /explore-haiku off. Changes apply from the next session.` }
+      return { text: `Lean Explore agent: ${said}. Type /lean-explore on or /lean-explore off. Changes apply from the next session.` }
     }
     if (now === 'custom') return { text: `${p.live} was not written by this mod, so it was left alone. Rename or remove it first.` }
     if (now === want) return { text: `Lean Explore agent is already ${want}.` }

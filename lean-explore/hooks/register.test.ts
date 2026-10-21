@@ -31,7 +31,7 @@ function world(on: any, files: Map<string, string>, os = 'Windows_NT') {
 }
 
 const start = ($: any) => $.session.start({ cwd: 'C:\\work', source: 'startup' })
-const run = async ($: any, args: string) => String((await $.command.run({ command: 'explore-haiku', args })).text)
+const run = async ($: any, args: string) => String((await $.command.run({ command: 'lean-explore', args })).text)
 
 test('first session installs the agent and says so', async ($: any, on: any) => {
   const files = new Map<string, string>()
@@ -41,7 +41,7 @@ test('first session installs the agent and says so', async ($: any, on: any) => 
   expect(seen.toasts.join()).toContain('installed')
 })
 
-test('a session refreshes our own outdated file but never a custom one', async ($: any, on: any) => {
+test('a session refreshes our own outdated file, 1.1 marker included, but never a custom one', async ($: any, on: any) => {
   const ours = new Map([[LIVE, '---\nname: Explore\n# Written by the lean-explore mod. /explore-haiku off parks it.\nmodel: haiku\n---\nold']])
   world(on, ours)
   await start($)
