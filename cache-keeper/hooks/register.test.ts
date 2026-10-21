@@ -1,9 +1,10 @@
 import { expect, mock, test } from 'claude-code/testing'
 
 const HOME = 'C:/Users/Test'
+const SUMMARY = [{ role: 'user', text: 'summary', toolUses: [] }]
 const CWD = 'C:/proj'
 
-function world(on: any, answer = 'Cancel') {
+function world(on: any, answer = 'Cancel', engine: { compact?: any; command?: any } = {}) {
   const files = new Map<string, string>()
   const n = (p: string) => String(p).replace(/\\/g, '/')
   const sent: any[] = []
@@ -19,13 +20,14 @@ function world(on: any, answer = 'Cancel') {
   on('session.start', (_$: any, e: any) => e)
   on('session.append', () => ({ value: undefined }))
   on('command.register', () => ({ value: undefined }))
-  on('command.run', () => ({ text: '' }))
-  on('ui.toast', () => ({ value: undefined }))
+  on('command.run', engine.command ?? (() => ({ text: '' })))
+  const toasts: string[] = []
+  on('ui.toast', (_$: any, e: any) => { toasts.push(String(e.text ?? e.message ?? JSON.stringify(e))); return { value: undefined } })
   on('ui.log', () => ({ value: undefined }))
   on('ui.invalidate', () => ({ value: undefined }))
   on('ui.open', () => ({ value: undefined }))
   on('prompt.submit', (_$: any, e: any) => { sent.push(e); return e })
-  on('session.compact', (_$: any, e: any) => { compacted.push(e); return { messages: [{ role: 'user', text: 'summary', toolUses: [] }] } })
+  on('session.compact', (_$: any, e: any) => { compacted.push(e); return engine.compact ? engine.compact(e) : { messages: SUMMARY } })
   on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: '' } }))
   on('fs.write', (_$: any, e: any) => { files.set(n(e.path), e.text); return { value: undefined } })
   on('fs.read', (_$: any, e: any) => ({ value: files.get(n(e.path)) ?? '' }))
@@ -36,7 +38,7 @@ function world(on: any, answer = 'Cancel') {
     const q = e.questions[0].question
     return { result: { questions: e.questions, answers: { [q]: answer } } }
   })
-  return { clock, sent, compacted }
+  return { clock, sent, compacted, toasts }
 }
 const start = ($: any) => $.session.start({ cwd: CWD, source: 'startup' })
 
@@ -178,4 +180,77 @@ test('compact first holds the prompt, compacts, then sends it', async ($: any, o
   expect(w.compacted.length).toBe(1)
   expect(w.sent.length).toBe(1)
   expect(w.sent[0].text).toBe('hello there')
+})
+
+// 1.3.0: the keep-list, the desktop fallback, the receipt
+
+test('a bare automatic compaction gets the keep-list; given instructions and subagents are left alone', async ($: any, on: any) => {
+  const w = world(on)
+  await start($)
+  await $.session.compact({ trigger: 'auto', messages: SUMMARY })
+  await $.session.compact({ trigger: 'manual', instructions: 'keep the PO numbers', messages: SUMMARY })
+  await $.session.compact({ trigger: 'auto', agentId: 'sub1', messages: SUMMARY })
+  expect(String(w.compacted[0].instructions)).toContain('approach that failed')
+  expect(w.compacted[1].instructions).toBe('keep the PO numbers')
+  expect(w.compacted[2].instructions).toBeUndefined()
+})
+
+// The test engine refuses a compaction started from a test hook, so the mocked
+// /compact cannot compact here: this checks the command is sent, with the
+// keep-list, and that nothing goes out uncompacted when it does not run.
+test('compact first falls back to /compact when the direct compaction is refused (the desktop app)', async ($: any, on: any) => {
+  const commands: any[] = []
+  const w = world(on, 'Compact first, then send', {
+    compact: () => { throw new Error('Cannot compact a headless session from a plugin') },
+    command: (_$: any, e: any) => { if (e.command === 'compact') commands.push(e); return { text: '' } },
+  })
+  on('session.measure', (_$: any, e: any) => e)
+  stepHook(on)
+  await start($)
+  await measure($, 312_000)
+  await warmUp($)
+  await w.clock.advance(61 * 60_000)
+  const r: any = await $.prompt.submit({ text: 'hello there', origin: { kind: 'composer' } })
+  expect(String(r?.drop)).toContain('compacting')
+  await w.clock.advance(3_000)
+  expect(commands.length).toBe(1)
+  expect(String(commands[0].args)).toContain('approach that failed')
+  expect(w.sent.length).toBe(0)
+  expect(w.toasts.some((x) => x.includes('Compaction failed') && x.includes('Not sent'))).toBe(true)
+})
+
+test('after a compaction the band shows a receipt until OK', async ($: any, on: any) => {
+  world(on, 'Cancel', { compact: () => ({ messages: SUMMARY, tokensBefore: 512_000, tokensAfter: 41_000 }) })
+  on('session.measure', (_$: any, e: any) => e)
+  on('ui.render', ($: any, e: any) => $.ui.resolve(e).Box({ children: [] }))
+  await start($)
+  await measure($, 512_000)
+  await $.session.compact({ trigger: 'manual', messages: SUMMARY })
+  const ui = await $.ui.mount({ plugin: 'cache-keeper', surface: 'terminal', ...BAND(220) })
+  expect(await textOf(ui, /Compacted/)).toBe('✓ Compacted 512k → 41.0k · 471k lighter')
+  await ui.press({ key: 'receipt-ok' })
+  await ui.unmount()
+  const after = await $.ui.mount({ plugin: 'cache-keeper', surface: 'terminal', ...BAND(220) })
+  expect(await textOf(after, /Compacted/)).toBe('')
+  await after.unmount()
+})
+
+test('the desktop band shows the receipt, and fills in the size after when core did not report it', async ($: any, on: any) => {
+  const w = world(on, 'Cancel', { compact: () => ({ messages: SUMMARY, tokensBefore: 300_000 }) })
+  on('session.measure', (_$: any, e: any) => e)
+  on('ui.render', ($: any, e: any) => $.ui.resolve(e).Box({ children: [] }))
+  await start($)
+  await measure($, 300_000)
+  await $.session.compact({ trigger: 'auto', messages: SUMMARY })
+  const ui = await $.ui.mount({ plugin: 'cache-keeper', surface: 'desktop', ...BAND(200) })
+  expect(await textOf(ui, /Compacted/)).toContain('size after your next message')
+  await ui.unmount()
+  await measure($, 30_000)
+  const after = await $.ui.mount({ plugin: 'cache-keeper', surface: 'desktop', ...BAND(200) })
+  expect(await textOf(after, /Compacted/)).toBe('✓ Compacted 300k → 30.0k · 270k lighter')
+  await after.unmount()
+  await w.clock.advance(11 * 60_000)
+  const later = await $.ui.mount({ plugin: 'cache-keeper', surface: 'desktop', ...BAND(200) })
+  expect(await textOf(later, /Compacted/)).toBe('')
+  await later.unmount()
 })

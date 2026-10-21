@@ -15,6 +15,11 @@ import { makeMasker } from './privacy.mjs'
 const MIN = 60000
 const HEARTBEAT_EVERY = 30000
 const PANE = 'cache-board'
+const RECEIPT_MS = 10 * MIN
+// What a compaction without instructions of its own is told to keep: the details
+// a plain summary drops first. Idea from JayGPTPro's Smart PreCompact.
+const KEEP_LIST =
+  "Keep every approach that failed and why, every decision with its reason, the user's instructions and corrections in their own words, what is half done or untested, and exact strings (paths, errors, commands, IDs). Compress routine file reads, drafts and finished debugging rounds."
 
 // This session
 const S = {
@@ -59,6 +64,24 @@ const alerted = new Map() // sessionId -> state or warning key already announced
 let paneOpen = false
 let justCompacted = false
 let handoffPending = false
+let compactions = 0
+let receipt = null // { before, after?, at } of the last compaction, shown on the band
+
+function noteCompact(r) {
+  compactions++
+  const before = (r && r.tokensBefore) || S.ctx
+  receipt = before ? { before, after: r && r.tokensAfter, at: now } : null
+}
+
+function liveReceipt() {
+  if (receipt && now - receipt.at > RECEIPT_MS) receipt = null
+  return receipt
+}
+
+function receiptText(r) {
+  if (r.after === undefined) return `✓ Compacted ${tokens(r.before)} · size after your next message`
+  return `✓ Compacted ${tokens(r.before)} → ${tokens(r.after)} · ${tokens(Math.max(0, r.before - r.after))} lighter`
+}
 
 // The handoff flow. When /session-handoff runs (the band's button, /handoff, a
 // typed command, or Claude calling the skill), the answer of the turn it starts
@@ -147,19 +170,35 @@ async function restorePrompt($, text, why) {
   $.ui.toast(`${why} Not sent${filled ? ': your message is back in the prompt box' : ''}.`, { timeoutMs: 10000 })
 }
 
+// /compact as if typed. Our session.compact hook sees it and notes it, so the
+// count says whether it ran.
+async function compactByCommand($) {
+  const before = compactions
+  try {
+    await $.command.run({ command: 'compact', args: KEEP_LIST })
+  } catch {
+    return false
+  }
+  return compactions > before
+}
+
 async function compactThenSend($, resend) {
   let result
   for (let attempt = 0; ; attempt++) {
     try {
-      result = await $.session.compact()
+      result = await $.session.compact({ instructions: KEEP_LIST })
       break
     } catch (err) {
-      // rejected while a turn still runs: give it a moment, then one more try
-      if (attempt < 2) {
+      const why = String((err && err.message) || err)
+      // A turn still running: two short waits. The desktop app runs the session
+      // headless and refuses a mod's own compaction outright.
+      if (attempt < 2 && !/headless/i.test(why)) {
         await $.clock.sleep(1000)
         continue
       }
-      await restorePrompt($, resend.text, 'Compaction failed: ' + clip(String((err && err.message) || err), 100) + '.')
+      // Last resort: /compact as if typed, which the person's session allows
+      if (await compactByCommand($)) break
+      await restorePrompt($, resend.text, 'Compaction failed: ' + clip(why, 100) + '.')
       return
     }
   }
@@ -168,7 +207,13 @@ async function compactThenSend($, resend) {
     return
   }
   // our own compaction skips our session.compact hook, so mark it here
-  justCompacted = true
+  // (a /compact by command went through the hook already)
+  if (result) {
+    justCompacted = true
+    now = await $.clock.now()
+    noteCompact(result)
+    $.ui.invalidate('ui.render')
+  }
   S.lastActivity = await $.clock.now()
   try {
     await $.prompt.submit(resend)
@@ -286,6 +331,8 @@ function applyUsage(u) {
   if (u.context && u.context.window) S.window = u.context.window
   if (u.cost) S.costUsd = u.cost.usd
   if (Array.isArray(u.rateLimits) && u.rateLimits.length) S.rateLimits = u.rateLimits
+  // The first reading below the before-count is the size after the compaction
+  if (receipt && receipt.after === undefined && S.ctx && S.ctx < receipt.before) receipt.after = S.ctx
 }
 
 function limitTone(limits, extra) {
@@ -545,6 +592,7 @@ export function register(on) {
     S.lastActivity = 0
     S.keepWarm = false
     H.armed = false
+    receipt = null
     try {
       S.id = (await $.session.id()) || S.id
     } catch {
@@ -666,9 +714,19 @@ export function register(on) {
     return r
   })
 
+  // Every compaction of this conversation without instructions of its own (the
+  // automatic one, a bare /compact) gets the keep-list. A plugin's own compaction
+  // keeps whatever that plugin said.
   on('session.compact', async ($, e, next) => {
-    const r = await next(e)
+    const isMain = !e.agentId
+    const isBare = !String(e.instructions || '').trim()
+    const add = isMain && isBare && e.trigger !== 'plugin'
+    const r = await next(add ? { ...e, instructions: KEEP_LIST } : e)
+    if (!isMain || e.trigger === 'precompute' || (r && r.skip)) return r
     justCompacted = true
+    now = await $.clock.now()
+    noteCompact(r)
+    $.ui.invalidate('ui.render')
     return r
   })
 
@@ -786,6 +844,7 @@ export function register(on) {
     const below = await next(e)
     if (e.props && e.props.hasSurvey) return below
     if (!S.model && !S.lastActivity && !S.keepWarm) return below
+    now = await $.clock.now()
     if (e.surface === 'desktop') return desktopAlert($, e, below)
     const { Box, Text, Button } = $.ui.resolve(e)
     const hb = myHeartbeat()
@@ -795,6 +854,8 @@ export function register(on) {
     const rewrite = money(rewriteCost(S.ctx, S.model, ttl))
     // [name, text, Text props], joined by │
     const segs = []
+    const done = liveReceipt()
+    if (done) segs.push(['receipt', receiptText(done), { color: 'green', bold: true }])
     if (S.model) segs.push(['model', modelLabel(S.model) + (S.effort ? ` [${S.effort}]` : ''), {}])
     if (st.kind === 'kept') segs.push(['cache', `◆ kept warm · ${S.pings} ping${S.pings === 1 ? '' : 's'} ${money(S.pingUsd)} · until ${clock(S.keepWarmUntil)}`, { color: 'cyan' }])
     else if (st.kind === 'warm') segs.push(['cache', `● cache warm ${minutes(st.left)}`, { color: 'green' }])
@@ -818,6 +879,7 @@ export function register(on) {
     }
     const parts = segs.map(([, text, props], i) => Text({ ...props, children: [(i ? ' │ ' : '') + text] }))
     const row = [Box({ flexDirection: 'row', children: parts })]
+    if (done) row.push(dismissReceipt($, Button, 'ok'))
     if (st.kind === 'cooling' && big) {
       row.push(Button({ key: 'keepwarm', label: 'keep warm', hotkey: '1', plain: true, onPress: async () => { now = await $.clock.now(); startKeepWarm($, settings.keepWarmHours); await heartbeat($, true); $.ui.invalidate('ui.render') } }))
     } else if (st.kind === 'kept') {
@@ -863,9 +925,13 @@ function desktopAlert($, e, below) {
   const big = S.ctx >= settings.bigTokens
   const rewrite = money(rewriteCost(S.ctx, S.model, ttlMin()))
   const handoffBusy = handoffPending || H.armed || H.text || H.continuing
+  const done = liveReceipt()
   let line = ''
   let style = {}
-  if (st.kind === 'kept') {
+  if (done) {
+    line = receiptText(done)
+    style = { color: 'green', bold: true }
+  } else if (st.kind === 'kept') {
     line = `◆ Cache kept warm until ${clock(S.keepWarmUntil)} · ${S.pings} ping${S.pings === 1 ? '' : 's'} ${money(S.pingUsd)}`
     style = { color: 'cyan' }
   } else if (st.kind === 'cooling' && big) {
@@ -879,7 +945,8 @@ function desktopAlert($, e, below) {
   const { Box, Text, Button } = $.ui.resolve(e)
   const left = []
   if (line) left.push(Text({ ...style, children: [line] }))
-  if (st.kind === 'cooling' && big) {
+  if (done) left.push(dismissReceipt($, Button, 'OK'))
+  else if (st.kind === 'cooling' && big) {
     left.push(Button({ key: 'keepwarm', label: 'Keep warm', hotkey: '1', plain: true, onPress: async () => { now = await $.clock.now(); startKeepWarm($, settings.keepWarmHours); await heartbeat($, true); $.ui.invalidate('ui.render') } }))
   } else if (st.kind === 'kept') {
     left.push(Button({ key: 'keepwarm', label: 'Stop', hotkey: '1', plain: true, onPress: async () => { now = await $.clock.now(); stopKeepWarm($, 'turned off'); await heartbeat($, true); $.ui.invalidate('ui.render') } }))
@@ -893,6 +960,10 @@ function desktopAlert($, e, below) {
   // paddingTop: space from Token Optimizer's card, which sits right above
   const mine = Box({ flexDirection: 'row', justifyContent: 'space-between', width: '100%', columnGap: 2, paddingTop: 'sm', children: [Box({ flexDirection: 'row', columnGap: 2, children: left }), Box({ flexDirection: 'row', columnGap: 2, children: right })] })
   return Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
+}
+
+function dismissReceipt($, Button, label) {
+  return Button({ key: 'receipt-ok', label, hotkey: 'o', plain: true, dimColor: true, onPress: () => { receipt = null; $.ui.invalidate('ui.render') } })
 }
 
 function footerLabel() {

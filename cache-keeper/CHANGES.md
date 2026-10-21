@@ -3,6 +3,23 @@
 Based on Nate Herk's `cache-keeper` 1.0.0. To rebase onto a new upstream version:
 diff upstream 1.0.0 against the new one, then reapply the list below to the new code.
 
+## 1.3.0 - 2026-10-21
+
+Three ideas taken from JayGPTPro's Smart PreCompact (github.com/JayGPTPro/smart-precompact):
+
+- Keep-list: every compaction of the main chat without instructions of its own
+  (the automatic one, a bare `/compact`, and "Compact first, then send") is told
+  to keep failed approaches, decisions with reasons, the user's own words, what is
+  half done, and exact strings. Subagent compactions and other plugins' are left alone.
+- Desktop fallback: when the direct compaction is refused (the desktop app runs
+  the session headless), "Compact first, then send" runs `/compact` as if typed.
+  If that does not compact either, the message goes back to the prompt box, unsent.
+- Receipt: after a compaction the band shows `✓ Compacted 512k → 41k · 471k lighter`
+  for 10 minutes or until OK (`o`), in the terminal and on the desktop.
+
+Not taken: a model call to write custom instructions before compacting. It reads
+the whole chat, so on a cold cache it pays the very rewrite this mod warns about.
+
 ## 1.2.2 - 2026-10-21
 
 - Author is now Eliran Mukdasi; Nate Herk stays credited in the description and LICENSE.

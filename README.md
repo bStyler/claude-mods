@@ -5,13 +5,13 @@ Two Claude Code mods, published as a plugin marketplace named `eliran-mods`.
 | Mod | What you get |
 |---|---|
 | **goal-meter** 1.2.1 | A progress bar for `/goal`, built from Claude's own task plan. One line by default. `/goals` opens the full task list. |
-| **cache-keeper** 1.2.2 | A band above the prompt with the model, effort, context bar, plan limits (with the 5h reset) and cache state, so no status line is needed. Keeps a long chat's prompt cache warm (`/keepwarm 2`), asks before an expensive cold send, shows every local chat (`/board`), and hands a chat off (`/handoff`). |
+| **cache-keeper** 1.3.0 | A band above the prompt with the model, effort, context bar, plan limits (with the 5h reset) and cache state, so no status line is needed. Keeps a long chat's prompt cache warm (`/keepwarm 2`), asks before an expensive cold send, shows every local chat (`/board`), and hands a chat off (`/handoff`). Every compaction without its own instructions is told what to keep, and the band shows how much it saved. |
 
 ## Credit
 
 Both mods are built on Nate Herk's [claude-code-mods](https://github.com/nateherkai/claude-code-mods)
 (MIT). goal-meter is a fork of his goal-meter 1.0.0, and cache-keeper is based on his
-cache-keeper 1.0.0. Each mod's `CHANGES.md` lists what differs from upstream. MIT, see `LICENSE`.
+cache-keeper 1.0.0. Each mod's `CHANGES.md` lists what differs from upstream. cache-keeper 1.3.0 also borrows three ideas from JayGPTPro's [Smart PreCompact](https://github.com/JayGPTPro/smart-precompact). MIT, see `LICENSE`.
 
 ## Install
 
