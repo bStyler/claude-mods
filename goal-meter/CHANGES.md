@@ -6,6 +6,10 @@ Never enable this and `goal-meter@nateherk-mods` together: same name, same tool.
 To rebase onto a new upstream version: diff upstream 1.0.0 against the new one,
 then reapply the list below to the new code.
 
+## 1.2.1 - 2026-10-21
+
+- Author is now Eliran Mukdasi; Nate Herk stays credited in the description and LICENSE.
+
 ## 1.2.0 - 2026-10-21
 
 - Desktop always draws the compact one-line band. The full band's bar and task

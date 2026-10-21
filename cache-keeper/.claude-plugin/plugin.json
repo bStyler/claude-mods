@@ -1,9 +1,11 @@
 {
   "name": "cache-keeper",
-  "version": "1.2.1",
-  "description": "Keeps a big chat's prompt cache warm, warns before an expensive cold restart, shows every local chat on one board (/board), and hands a chat off to a fresh one (/handoff)",
+  "version": "1.2.2",
+  "description": "Keeps a big chat's prompt cache warm, warns before an expensive cold restart, shows every local chat on one board (/board), and hands a chat off to a fresh one (/handoff). Based on Nate Herk's cache-keeper (MIT).",
   "author": {
-    "name": "Nate Herk"
+    "name": "Eliran Mukdasi"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "homepage": "https://github.com/bStyler/claude-mods",
+  "repository": "https://github.com/bStyler/claude-mods"
 }

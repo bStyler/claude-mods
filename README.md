@@ -4,8 +4,8 @@ Two Claude Code mods, published as a plugin marketplace named `eliran-mods`.
 
 | Mod | What you get |
 |---|---|
-| **goal-meter** 1.2.0 | A progress bar for `/goal`, built from Claude's own task plan. One line by default. `/goals` opens the full task list. |
-| **cache-keeper** 1.2.1 | A band above the prompt with the model, effort, context bar, plan limits (with the 5h reset) and cache state, so no status line is needed. Keeps a long chat's prompt cache warm (`/keepwarm 2`), asks before an expensive cold send, shows every local chat (`/board`), and hands a chat off (`/handoff`). |
+| **goal-meter** 1.2.1 | A progress bar for `/goal`, built from Claude's own task plan. One line by default. `/goals` opens the full task list. |
+| **cache-keeper** 1.2.2 | A band above the prompt with the model, effort, context bar, plan limits (with the 5h reset) and cache state, so no status line is needed. Keeps a long chat's prompt cache warm (`/keepwarm 2`), asks before an expensive cold send, shows every local chat (`/board`), and hands a chat off (`/handoff`). |
 
 ## Credit
 
