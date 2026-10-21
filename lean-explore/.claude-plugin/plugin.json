@@ -1,6 +1,6 @@
 {
   "name": "lean-explore",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Replaces the built-in Explore subagent with a lean one: Haiku, low effort, Read/Grep/Glob only, short answers. About 3x fewer tokens in tests. /lean-explore on|off|status toggles it.",
   "author": {
     "name": "bStyler"
