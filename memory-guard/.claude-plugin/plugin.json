@@ -1,6 +1,6 @@
 {
   "name": "memory-guard",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Spots sessions worth remembering, nudges once to run /memorize, and queues the ones that ended without it for the next session. Files into your wiki if you have one, else Claude Code's own auto-memory.",
   "author": {
     "name": "bStyler"

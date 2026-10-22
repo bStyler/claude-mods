@@ -40,7 +40,7 @@ const beneath: { explore: boolean } = { explore: false }
 const $resolveBox = ($: any, e: any) => {
   const { Box, Text } = $.ui.resolve(e)
   if (!beneath.explore || e.component !== 'AbovePrompt') return Box({ children: [] })
-  return Box({ flexDirection: 'column', children: [Box({ key: 'lean-explore', flexDirection: 'column', marginTop: 'md', children: [Text({ children: ['Explore: Haiku'] })] })] })
+  return Box({ flexDirection: 'column', children: [Box({ key: 'mods-row', flexDirection: 'row', children: [Box({ key: 'lean-explore', children: [Text({ children: ['Explore: Haiku'] })] }), Box({ key: 'tldr', children: [Text({ children: ['TL;DR'] })] })] })] })
 }
 
 let seq = 0
@@ -275,26 +275,24 @@ test('/memory-guard on overrides enabled:false in config', async ($: any, on: an
   expect(String(r.text)).toContain('memory-guard is on')
 })
 
-test('on desktop the chip sits right after the Explore chip when lean-explore draws beneath', async ($: any, on: any) => {
+test('on desktop the chip joins the shared mods-row right after the Explore chip', async ($: any, on: any) => {
   world(on)
   beneath.explore = true
   const r: any = await $.ui.render(BAND('desktop'))
-  const rows: any[] = []
+  let row: any
   const walk = (n: any) => {
     if (!n || typeof n !== 'object') return
-    const kids = n.children
-    if (n.props?.flexDirection === 'row' && Array.isArray(kids)) rows.push(n)
-    if (Array.isArray(kids)) kids.forEach(walk)
+    if (n.props?.key === 'mods-row') row = n
+    for (const c of n.children ?? []) walk(c)
   }
-  walk(r.value ?? r)
-  const shared = rows.find(n => n.children[0]?.props?.key === 'lean-explore')
-  expect(shared).toBeDefined()
-  expect(JSON.stringify(shared.children[1])).toContain('memory-guard-chip')
+  walk(r)
+  expect(row.children.map((c: any) => c.props?.key)).toEqual(['lean-explore', 'memory-guard-chip', 'tldr'])
 })
 
-test('without lean-explore the chip keeps its own row', async ($: any, on: any) => {
+test('without a shared row the chip draws one, keyed for the other mods', async ($: any, on: any) => {
   world(on)
   const ui = await $.ui.mount(BAND('desktop'))
+  expect(await ui.find({ key: 'mods-row' })).toBeDefined()
   expect(await ui.find({ key: 'memory-guard-chip' })).toBeDefined()
   await ui.unmount()
 })

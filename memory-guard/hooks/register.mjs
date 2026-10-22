@@ -268,20 +268,31 @@ function drawChip($, el) {
   return Box({ key: 'memory-guard-chip', flexDirection: 'column', hover: { scope: CHIP_SCOPE }, children: [chip, hoverCard] })
 }
 
-// Puts the chip right after lean-explore's chip when that mod's row is in `node`, which
-// happens when it draws beneath this mod. Returns undefined when there is no such row.
-function besideExplore(el, node, chip) {
-  if (!node || typeof node !== 'object' || !node.props) return undefined
-  if (node.props.key === 'lean-explore') {
-    return el.Box({ flexDirection: 'row', columnGap: 2, alignItems: 'flex-start', children: [node, el.Box({ marginTop: 'md', children: [chip] })] })
+// The band row several mods share (`mods-row`, drawn by whichever draws first): lean-explore's
+// chip first, this one right after it, other mods' buttons at the right end. Drawings
+// beneath come from next(e) as plain { type, props, children } nodes.
+const SHARED_ROW = 'mods-row'
+
+function findKeyed(node, key) {
+  if (!node || typeof node !== 'object') return null
+  if (node.props && node.props.key === key) return node
+  for (const child of node.children ?? []) {
+    const hit = findKeyed(child, key)
+    if (hit) return hit
   }
-  const kids = node.children
-  if (!Array.isArray(kids)) return undefined
-  for (let i = 0; i < kids.length; i++) {
-    const swapped = besideExplore(el, kids[i], chip)
-    if (swapped) return { ...node, children: [...kids.slice(0, i), swapped, ...kids.slice(i + 1)] }
-  }
-  return undefined
+  return null
+}
+
+function swapNode(node, target, next) {
+  if (node === target) return next
+  if (!node || typeof node !== 'object' || !node.children) return node
+  let changed = false
+  const children = node.children.map((child) => {
+    const out = swapNode(child, target, next)
+    if (out !== child) changed = true
+    return out
+  })
+  return changed ? { ...node, children } : node
 }
 
 function drawBand($, el) {
@@ -434,16 +445,20 @@ export const register = (on) => {
     let rest = below
     if (desktop && cfg.ui.chip) {
       const chip = drawChip($, el)
-      const merged = besideExplore(el, below, chip)
-      if (merged) rest = merged
-      else rows.push(chip)
+      const shared = findKeyed(below, SHARED_ROW)
+      if (shared) {
+        const kids = shared.children ?? []
+        const at = kids.findIndex((k) => k && k.props && k.props.key === 'lean-explore') + 1
+        rest = swapNode(below, shared, { ...shared, children: [...kids.slice(0, at), chip, ...kids.slice(at)] })
+      } else {
+        // marginTop: the same gap the other rows in the band keep from Token Optimizer's card
+        rows.push(el.Box({ key: SHARED_ROW, flexDirection: 'row', alignItems: 'flex-start', columnGap: 2, marginTop: 'md', children: [chip, el.Box({ flexGrow: 1 })] }))
+      }
     }
     const drawn = watched() && cfg.ui.band ? drawBand($, el) : null
-    if (drawn) rows.push(drawn)
+    if (drawn) rows.push(desktop ? el.Box({ key: 'memory-guard', marginTop: 'md', children: [drawn] }) : drawn)
     if (!rows.length) return rest
-    // Desktop: the same gap the other rows in the band keep from Token Optimizer's card
-    const mine = desktop ? el.Box({ key: 'memory-guard', flexDirection: 'column', rowGap: 1, marginTop: 'md', children: rows }) : rows[0]
-    return el.Box({ flexDirection: 'column', children: rest ? [mine, rest] : [mine] })
+    return el.Box({ flexDirection: 'column', children: rest ? [...rows, rest] : rows })
   })
 
   // The terminal gets a short footer label; on desktop the chip says it.
