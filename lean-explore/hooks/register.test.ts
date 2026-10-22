@@ -6,7 +6,7 @@ const PARKED = `${LIVE}.off`
 // the engine hands paths over with backslashes
 const n = (p: string) => String(p).split('\\').join('/')
 
-function world(on: any, files: Map<string, string>, os = 'Windows_NT') {
+function world(on: any, files: Map<string, string>, os = 'Windows_NT', tldrBeneath = false) {
   const seen = { argv: [] as string[][], toasts: [] as string[] }
   mock.store(on)
   on('env.get', (_$: any, e: any) => ({ value: e.name === 'USERPROFILE' ? 'C:\\Users\\me' : e.name === 'OS' ? os : undefined }))
@@ -26,7 +26,12 @@ function world(on: any, files: Map<string, string>, os = 'Windows_NT') {
   on('ui.toast', (_$: any, e: any) => { seen.toasts.push(JSON.stringify(e)); return { value: undefined } })
   on('ui.invalidate', () => ({ value: undefined }))
   // the engine's own footer: one Text per label
-  on('ui.render', ($: any, e: any) => { const { Box, Text } = $.ui.resolve(e); return Box({ children: (e.props.modes ?? []).map((m: string) => Text({ children: m })) }) })
+  on('ui.render', ($: any, e: any) => {
+    const { Box, Text, Button } = $.ui.resolve(e)
+    // TL;DR drawn beneath: its shared row, a spacer and its button
+    if (tldrBeneath && e.component === 'AbovePrompt') return Box({ children: [Box({ key: 'mods-row', flexDirection: 'row', children: [Box({ flexGrow: 1 }), Button({ key: 'tldr-off', label: 'No TL;DR', onPress: () => {} })] })] })
+    return Box({ children: (e.props.modes ?? []).map((m: string) => Text({ children: m })) })
+  })
   on("agent.spawn", (_$: any, e: any) => ({ model: e.model ?? e.parentModel, agentId: `a-${e.subagentType}` }))
   return seen
 }
@@ -150,4 +155,22 @@ test('desktop chip: a custom file gets no buttons; the terminal band gets no chi
   const term = await band($, 'terminal')
   expect(await textOf(term, /Explore/)).toBe('')
   await term.unmount()
+})
+
+test('desktop chip joins the shared row TL;DR drew beneath, before its button', async ($: any, on: any) => {
+  world(on, new Map([[LIVE, AGENT]]), 'Windows_NT', true)
+  await start($)
+  const ui = await band($, 'desktop')
+  const row = await ui.find({ key: 'mods-row' })
+  expect(String(row?.text ?? '')).toContain('Explore: Haiku')
+  expect(await ui.find({ key: 'tldr-off' })).toBeTruthy()
+  await ui.unmount()
+})
+
+test('desktop chip draws the shared row itself when no other mod has, so an outer mod can join it', async ($: any, on: any) => {
+  world(on, new Map([[LIVE, AGENT]]))
+  await start($)
+  const ui = await band($, 'desktop')
+  expect(String((await ui.find({ key: 'mods-row' }))?.text ?? '')).toContain('Explore: Haiku')
+  await ui.unmount()
 })

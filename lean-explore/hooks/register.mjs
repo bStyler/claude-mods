@@ -143,9 +143,40 @@ function desktopChip($, e, below) {
   const row = [chip]
   // The amber state needs action, so its button sits on the chip itself.
   if (!lean && !pending() && view.loaded !== 'custom') row.push(act('Turn on', 'on'))
+  const mine = Box({ key: 'lean-explore', flexDirection: 'column', children: [Box({ flexDirection: 'row', columnGap: 2, children: row }), hoverCard] })
+
+  // Share the row other mods use (TL;DR's `mods-row`): the chip goes first, their buttons
+  // stay at the right end. With none beneath, draw that row so an outer mod can join it.
+  const shared = findKeyed(below, SHARED_ROW)
+  if (shared) return swapNode(below, shared, { ...shared, children: [mine, ...(shared.children ?? [])] })
   // marginTop: the same gap the other rows in the band keep from Token Optimizer's card
-  const mine = Box({ key: 'lean-explore', flexDirection: 'column', marginTop: 'md', children: [Box({ flexDirection: 'row', columnGap: 2, children: row }), hoverCard] })
-  return Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
+  const own = Box({ key: SHARED_ROW, flexDirection: 'row', alignItems: 'flex-start', columnGap: 2, marginTop: 'md', children: [mine, Box({ flexGrow: 1 })] })
+  return Box({ flexDirection: 'column', children: below ? [own, below] : [own] })
+}
+
+// Drawings beneath come from next(e) as plain { type, props, children } nodes.
+const SHARED_ROW = 'mods-row'
+
+function findKeyed(node, key) {
+  if (!node || typeof node !== 'object') return null
+  if (node.props && node.props.key === key) return node
+  for (const child of node.children ?? []) {
+    const hit = findKeyed(child, key)
+    if (hit) return hit
+  }
+  return null
+}
+
+function swapNode(node, target, next) {
+  if (node === target) return next
+  if (!node || typeof node !== 'object' || !node.children) return node
+  let changed = false
+  const children = node.children.map(child => {
+    const out = swapNode(child, target, next)
+    if (out !== child) changed = true
+    return out
+  })
+  return changed ? { ...node, children } : node
 }
 
 export const register = on => {
