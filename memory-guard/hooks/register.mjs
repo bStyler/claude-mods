@@ -27,6 +27,7 @@ const DEFAULTS = {
   ui: { band: true, hint: true, suggest: true, chip: true },
 }
 const BUNDLED_SKILL = 'memory-guard:memorize'
+const CHIP_SCOPE = 'memory-guard-chip'
 const QUEUE_MAX = 20
 const WRITERS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
 const MCP_WRITE = /(^|[_-])(create|update|add|send|post|publish|insert|append|move|delete|comment|write|edit|upsert|set|save)([_-]|$)/i
@@ -262,8 +263,25 @@ function drawChip($, el) {
   const card = [Text({ bold: true, children: [on ? 'Watching this session for work worth remembering' : 'Not watching this project'] })]
   if (on) card.push(Text({ children: [`It nudges once at ${cfg.threshold} points${s && s.signals.length ? `; so far: ${s.signals.map(label).join(', ')}` : ''}. /${skillName()} saves now.`] }))
   card.push(Button({ key: 'memory-guard-toggle', label: on ? 'Turn off here' : 'Turn on here', plain: true, onPress: async () => { $.ui.toast(await turn($, on ? 'off' : 'on')) } }))
-  const hoverCard = Box({ display: 'none', hover: { display: 'flex' }, flexDirection: 'column', rowGap: 1, padding: 'sm', borderStyle: 'round', children: card })
-  return Box({ flexDirection: 'column', children: [chip, hoverCard] })
+  // A named hover scope, so the card opens for this chip alone, even on another mod's row.
+  const hoverCard = Box({ display: 'none', hover: { display: 'flex', scope: CHIP_SCOPE }, flexDirection: 'column', rowGap: 1, padding: 'sm', borderStyle: 'round', children: card })
+  return Box({ key: 'memory-guard-chip', flexDirection: 'column', hover: { scope: CHIP_SCOPE }, children: [chip, hoverCard] })
+}
+
+// Puts the chip right after lean-explore's chip when that mod's row is in `node`, which
+// happens when it draws beneath this mod. Returns undefined when there is no such row.
+function besideExplore(el, node, chip) {
+  if (!node || typeof node !== 'object' || !node.props) return undefined
+  if (node.props.key === 'lean-explore') {
+    return el.Box({ flexDirection: 'row', columnGap: 2, alignItems: 'flex-start', children: [node, el.Box({ marginTop: 'md', children: [chip] })] })
+  }
+  const kids = node.children
+  if (!Array.isArray(kids)) return undefined
+  for (let i = 0; i < kids.length; i++) {
+    const swapped = besideExplore(el, kids[i], chip)
+    if (swapped) return { ...node, children: [...kids.slice(0, i), swapped, ...kids.slice(i + 1)] }
+  }
+  return undefined
 }
 
 function drawBand($, el) {
@@ -413,13 +431,19 @@ export const register = (on) => {
     const el = $.ui.resolve(e)
     const desktop = e.surface === 'desktop'
     const rows = []
-    if (desktop && cfg.ui.chip) rows.push(drawChip($, el))
+    let rest = below
+    if (desktop && cfg.ui.chip) {
+      const chip = drawChip($, el)
+      const merged = besideExplore(el, below, chip)
+      if (merged) rest = merged
+      else rows.push(chip)
+    }
     const drawn = watched() && cfg.ui.band ? drawBand($, el) : null
     if (drawn) rows.push(drawn)
-    if (!rows.length) return below
+    if (!rows.length) return rest
     // Desktop: the same gap the other rows in the band keep from Token Optimizer's card
     const mine = desktop ? el.Box({ key: 'memory-guard', flexDirection: 'column', rowGap: 1, marginTop: 'md', children: rows }) : rows[0]
-    return el.Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
+    return el.Box({ flexDirection: 'column', children: rest ? [mine, rest] : [mine] })
   })
 
   // The terminal gets a short footer label; on desktop the chip says it.

@@ -8,6 +8,7 @@ const files = new Map<string, string>()
 const store = new Map<string, unknown>()
 
 function world(on: any, ids = { current: 's1', cwd: CWD }, toasts: string[] = [], runs: string[] = []) {
+  beneath.explore = false
   files.clear()
   store.clear()
   const n = (p: string) => String(p).replace(/\\/g, '/')
@@ -34,7 +35,13 @@ function world(on: any, ids = { current: 's1', cwd: CWD }, toasts: string[] = []
   on('ui.render', (_$: any, e: any) => { if (e.component === 'PromptHint') hint.tail = e.props.tail; return $resolveBox(_$, e) })
 }
 const hint: { tail?: string } = {}
-const $resolveBox = ($: any, e: any) => $.ui.resolve(e).Box({ children: [] })
+const beneath: { explore: boolean } = { explore: false }
+// Beneath the plugin: an empty band, or one with lean-explore's chip row in it
+const $resolveBox = ($: any, e: any) => {
+  const { Box, Text } = $.ui.resolve(e)
+  if (!beneath.explore || e.component !== 'AbovePrompt') return Box({ children: [] })
+  return Box({ flexDirection: 'column', children: [Box({ key: 'lean-explore', flexDirection: 'column', marginTop: 'md', children: [Text({ children: ['Explore: Haiku'] })] })] })
+}
 
 let seq = 0
 const call = ($: any, tool: string, input: any = {}) => $.tool.call({ tool, tool_use_id: `t${++seq}`, ...input })
@@ -266,4 +273,28 @@ test('/memory-guard on overrides enabled:false in config', async ($: any, on: an
   await $.command.run({ command: 'memory-guard', args: 'on', origin: { kind: 'user' }, presentation: {} })
   const r: any = await $.command.run({ command: 'memory-guard', args: 'status', origin: { kind: 'user' }, presentation: {} })
   expect(String(r.text)).toContain('memory-guard is on')
+})
+
+test('on desktop the chip sits right after the Explore chip when lean-explore draws beneath', async ($: any, on: any) => {
+  world(on)
+  beneath.explore = true
+  const r: any = await $.ui.render(BAND('desktop'))
+  const rows: any[] = []
+  const walk = (n: any) => {
+    if (!n || typeof n !== 'object') return
+    const kids = n.children
+    if (n.props?.flexDirection === 'row' && Array.isArray(kids)) rows.push(n)
+    if (Array.isArray(kids)) kids.forEach(walk)
+  }
+  walk(r.value ?? r)
+  const shared = rows.find(n => n.children[0]?.props?.key === 'lean-explore')
+  expect(shared).toBeDefined()
+  expect(JSON.stringify(shared.children[1])).toContain('memory-guard-chip')
+})
+
+test('without lean-explore the chip keeps its own row', async ($: any, on: any) => {
+  world(on)
+  const ui = await $.ui.mount(BAND('desktop'))
+  expect(await ui.find({ key: 'memory-guard-chip' })).toBeDefined()
+  await ui.unmount()
 })
