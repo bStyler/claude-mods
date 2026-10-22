@@ -8,6 +8,8 @@
 //   told about it and offers "Catch up"; the hint line shows "· N unmemorized".
 // - Config: .claude/memory-guard.json in the project, ~/.claude/memory-guard.json for
 //   defaults. "kb" points it at a wiki, "skill" hands /memorize to a skill of your own.
+// - Shows whether it is on: a chip above the prompt on desktop (hover for a Turn off /
+//   Turn on button), a footer label in the terminal.
 // - Commands: /memorize-queue [clear], /memory-guard on|off|status.
 // - The mod sends no model requests of its own.
 
@@ -22,7 +24,7 @@ const DEFAULTS = {
   outputDirs: ['docs', 'reports', 'deliverables', 'notes'],
   signals: { outputFile: true, mcpWrite: true, transcriptRead: true, decision: true, commit: true, planAccepted: true, longSession: true },
   extraSignals: [],
-  ui: { band: true, hint: true, suggest: true },
+  ui: { band: true, hint: true, suggest: true, chip: true },
 }
 const BUNDLED_SKILL = 'memory-guard:memorize'
 const QUEUE_MAX = 20
@@ -44,7 +46,7 @@ let cwd = ''
 let project = ''
 let cfg = DEFAULTS
 let extra = []
-let off = false
+let override // true or false once /memory-guard on|off ran in this project, over the config
 let memDir = ''
 let ready = false
 let cur = null // this session's record, as last loaded or saved
@@ -57,7 +59,7 @@ const n = (p) => String(p ?? '').replace(/\\/g, '/')
 const lower = (p) => n(p).toLowerCase()
 const isAbs = (p) => /^([A-Za-z]:)?\//.test(n(p))
 const resolve = (p) => (isAbs(p) ? n(p) : `${cwd}/${n(p).replace(/^\.\//, '')}`)
-const watched = () => cfg.enabled !== false && !off
+const watched = () => (override === undefined ? cfg.enabled !== false : override)
 const skillName = () => String(cfg.skill || '').replace(/^\//, '') || BUNDLED_SKILL
 const label = (id) => LABELS[id] || id
 
@@ -114,7 +116,8 @@ async function ensure($) {
   cfg = merge(merge(DEFAULTS, user), local)
   cfg.kb = normalizeKb(cfg.kb)
   extra = compileExtra(cfg.extraSignals, $)
-  off = !!(await $.store.get(`off:${project}`))
+  const saved = await $.store.get(`off:${project}`)
+  override = typeof saved === 'boolean' ? !saved : undefined
   // Claude Code keeps auto-memory beside the transcripts: projects/<cwd with every
   // other character as "-">/memory. The transcript path, once seen, wins.
   if (!memDir) memDir = `${home}/.claude/projects/${cwd.replace(/[^A-Za-z0-9]/g, '-')}/memory`
@@ -143,6 +146,7 @@ async function save($, s) {
   s.important = score(s) >= cfg.threshold
   cur = s
   await $.store.set(`session:${s.id}`, s)
+  $.ui.invalidate('ui.render')
 }
 
 async function readQueue($, key) {
@@ -223,7 +227,7 @@ async function queueText($) {
 async function statusText($) {
   const s = await load($)
   return [
-    `memory-guard is ${watched() ? 'on' : 'off'} in this project${cfg.enabled === false ? ' (disabled in config)' : ''}.`,
+    `memory-guard is ${watched() ? 'on' : 'off'} in this project${override === undefined && cfg.enabled === false ? ' (disabled in config)' : ''}.`,
     `Files into: ${cfg.kb ? `the knowledge base in ${cfg.kb.path}/, plus auto-memory` : 'auto-memory'} (${memDir}).`,
     `/memorize runs: /${skillName()}.`,
     `Threshold ${cfg.threshold}; this session scores ${score(s)} (${s.signals.map(label).join(', ') || 'no signals'}, ${s.turns} turns).`,
@@ -231,7 +235,36 @@ async function statusText($) {
   ].join('\n')
 }
 
+async function turn($, want) {
+  const on = want === 'on'
+  override = on
+  await $.store.set(`off:${project}`, !on)
+  if (!on && cur) {
+    await $.store.delete(`session:${cur.id}`)
+    cur = null
+  }
+  $.ui.invalidate('ui.render')
+  return `memory-guard: ${on ? 'on' : 'off'} in this project.`
+}
+
 // ---------- drawing ----------
+
+// The desktop chip, always one row: green while it watches this project, grey when off.
+// Hovering shows a card with the score and a Turn off / Turn on button.
+function drawChip($, el) {
+  const { Box, Text, Button } = el
+  const on = watched()
+  const s = cur
+  const words = [`Memory guard: ${on ? 'on' : 'off'}`]
+  if (on && s) words.push(s.memorized ? 'saved' : `${score(s)} of ${cfg.threshold}`)
+  if (on && queueCount) words.push(`${queueCount} unmemorized`)
+  const chip = Text({ children: [Text({ color: on ? 'success' : 'inactive', children: ['●'] }), ` ${words.join(' · ')}`] })
+  const card = [Text({ bold: true, children: [on ? 'Watching this session for work worth remembering' : 'Not watching this project'] })]
+  if (on) card.push(Text({ children: [`It nudges once at ${cfg.threshold} points${s && s.signals.length ? `; so far: ${s.signals.map(label).join(', ')}` : ''}. /${skillName()} saves now.`] }))
+  card.push(Button({ key: 'memory-guard-toggle', label: on ? 'Turn off here' : 'Turn on here', plain: true, onPress: async () => { $.ui.toast(await turn($, on ? 'off' : 'on')) } }))
+  const hoverCard = Box({ display: 'none', hover: { display: 'flex' }, flexDirection: 'column', rowGap: 1, padding: 'sm', borderStyle: 'round', children: card })
+  return Box({ flexDirection: 'column', children: [chip, hoverCard] })
+}
 
 function drawBand($, el) {
   const { Box, Text, Button } = el
@@ -367,15 +400,8 @@ export const register = (on) => {
     await ensure($)
     const arg = String(e.args ?? '').trim().toLowerCase()
     if (arg === 'off' || arg === 'on') {
-      off = arg === 'off'
-      await $.store.set(`off:${project}`, off)
-      if (off) {
-        const s = await load($)
-        await $.store.delete(`session:${s.id}`)
-        cur = null
-      }
-      $.ui.invalidate('ui.render')
-      return { text: `memory-guard: ${off ? 'off' : 'on'} in this project.` }
+      if (arg === 'off') await load($)
+      return { text: await turn($, arg) }
     }
     return { text: await statusText($) }
   })
@@ -384,13 +410,25 @@ export const register = (on) => {
     const below = await next(e)
     if (e.props && e.props.hasSurvey) return below
     await ensure($)
-    if (!watched() || !cfg.ui.band) return below
     const el = $.ui.resolve(e)
-    const drawn = drawBand($, el)
-    if (!drawn) return below
+    const desktop = e.surface === 'desktop'
+    const rows = []
+    if (desktop && cfg.ui.chip) rows.push(drawChip($, el))
+    const drawn = watched() && cfg.ui.band ? drawBand($, el) : null
+    if (drawn) rows.push(drawn)
+    if (!rows.length) return below
     // Desktop: the same gap the other rows in the band keep from Token Optimizer's card
-    const mine = e.surface === 'desktop' ? el.Box({ key: 'memory-guard', marginTop: 'md', children: [drawn] }) : drawn
+    const mine = desktop ? el.Box({ key: 'memory-guard', flexDirection: 'column', rowGap: 1, marginTop: 'md', children: rows }) : rows[0]
     return el.Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
+  })
+
+  // The terminal gets a short footer label; on desktop the chip says it.
+  on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
+    if (e.surface === 'desktop') return next(e)
+    await ensure($)
+    if (!cfg.ui.chip) return next(e)
+    const modes = Array.isArray(e.props && e.props.modes) ? e.props.modes : []
+    return next({ ...e, props: { ...e.props, modes: [...modes, `memory guard ${watched() ? 'on' : 'off'}`] } })
   })
 
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {

@@ -244,3 +244,26 @@ test('"Catch up" runs the skill in queue mode and clears the queue', async ($: a
   expect(runs).toContain('/memory-guard:memorize queue')
   expect(await queueText($)).toContain('Queue is empty.')
 })
+
+test('desktop chip shows on/off and its button turns it off and on', async ($: any, on: any) => {
+  world(on)
+  await call($, 'Bash', { command: 'git commit -m x' })
+  let ui = await $.ui.mount(BAND('desktop'))
+  expect(await ui.find({ type: 'Text', text: /Memory guard: on · 1 of 2/ })).toBeDefined()
+  await ui.press({ key: 'memory-guard-toggle' })
+  await ui.unmount()
+  ui = await $.ui.mount(BAND('desktop'))
+  expect(await ui.find({ type: 'Text', text: /Memory guard: off/ })).toBeDefined()
+  await ui.press({ key: 'memory-guard-toggle' })
+  await ui.unmount()
+  const r: any = await $.command.run({ command: 'memory-guard', args: 'status', origin: { kind: 'user' }, presentation: {} })
+  expect(String(r.text)).toContain('memory-guard is on')
+})
+
+test('/memory-guard on overrides enabled:false in config', async ($: any, on: any) => {
+  world(on)
+  files.set(`${CWD}/.claude/memory-guard.json`, JSON.stringify({ enabled: false }))
+  await $.command.run({ command: 'memory-guard', args: 'on', origin: { kind: 'user' }, presentation: {} })
+  const r: any = await $.command.run({ command: 'memory-guard', args: 'status', origin: { kind: 'user' }, presentation: {} })
+  expect(String(r.text)).toContain('memory-guard is on')
+})

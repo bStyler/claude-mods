@@ -7,7 +7,7 @@ Four Claude Code mods, published as a plugin marketplace named `claude-super-mod
 | **goal-meter** 1.2.1 | A progress bar for `/goal`, built from Claude's own task plan. One line by default. `/goals` opens the full task list. |
 | **cache-keeper** 1.3.0 | A band above the prompt with the model, effort, context bar, plan limits (with the 5h reset) and cache state, so no status line is needed. Keeps a long chat's prompt cache warm (`/keepwarm 2`), asks before an expensive cold send, shows every local chat (`/board`), and hands a chat off (`/handoff`). Every compaction without its own instructions is told what to keep, and the band shows how much it saved. |
 | **lean-explore** 1.4.0 | Replaces the built-in Explore subagent (the one that does codebase searches) with a lean one: Haiku, low effort, Read/Grep/Glob only, short answers with file:line. In tests it used about 3x fewer tokens and ran twice as fast, with the same answers. `/lean-explore on\|off\|status` toggles it. |
-| **memory-guard** 0.1.0 | Spots sessions worth remembering (files written to output folders, MCP writes, meeting transcripts, decisions, commits, accepted plans, long chats) and nudges once to run `/memorize`. A session that ends without it is queued, and the next session in that project offers to catch up. Files into your wiki if you point it at one, else Claude Code's own auto-memory. Ships its own `/memorize` skill. |
+| **memory-guard** 0.2.0 | Spots sessions worth remembering (files written to output folders, MCP writes, meeting transcripts, decisions, commits, accepted plans, long chats) and nudges once to run `/memorize`. A session that ends without it is queued, and the next session in that project offers to catch up. Files into your wiki if you point it at one, else Claude Code's own auto-memory. Ships its own `/memorize` skill. |
 
 
 ## lean-explore
@@ -60,6 +60,10 @@ Every field is optional:
   there, and logs each one. A write to `kb.log` counts as memorized.
 - `skill`: the skill the buttons run. Leave it out to use the bundled `memory-guard:memorize`.
 - `extraSignals`: your own signals, by tool-name or Bash-command regex.
+
+On desktop a chip above the prompt shows `Memory guard: on · 1 of 2` (green) or `off` (grey);
+hover it for a **Turn off here** / **Turn on here** button. The terminal footer says
+`memory guard on` or `off`. `"ui": { "chip": false }` hides both.
 
 If it finds a `wiki/` folder or an Obsidian vault with no config, it says so once.
 The band and hint line show in the terminal and the desktop app; elsewhere the toast and
