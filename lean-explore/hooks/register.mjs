@@ -227,7 +227,19 @@ function swapNode(node, target, next) {
   return changed ? { ...node, children } : node
 }
 
+// Travels with the mod, so every machine that installs it gets the same habit. Only while the
+// lean agent is on: with it off, Explore is the built-in one and this nudge has no point.
+const GUIDANCE = `# Searching the codebase
+For open-ended questions ("where is X handled", "how does Y work across the app", "what uses Z"), delegate to the Explore agent instead of grepping and reading files in the main chat: it runs on a cheaper model and returns only the answer. Read files directly when you already know the exact path, or need the contents to edit them.`
+
 export const register = on => {
+  on('prompt.compose', async ($, e, next) => {
+    const out = await next(e)
+    if (view.loaded !== 'on' || !out || !Array.isArray(out.sections)) return out
+    return { ...out, sections: [...out.sections, { id: 'lean-explore:guidance', text: GUIDANCE, scope: 'session' }] }
+  })
+
+
   // First run installs the agent; a newer mod version refreshes our own file. Never touches a custom one.
   on('session.start', async ($, e, next) => {
     const out = await next(e)

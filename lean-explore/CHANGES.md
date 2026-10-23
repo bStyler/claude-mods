@@ -2,6 +2,12 @@
 
 Based on bStyler's `lean-explore` 1.4.0 (claude-super-mods).
 
+## 1.6.0 - 2026-10-23
+
+- Adds a short "Searching the codebase" section to the system prompt (`prompt.compose`) while the lean
+  agent is on: delegate open-ended searches to Explore, read directly when the path is known. It ships
+  with the mod, so no CLAUDE.md edit is needed on any machine.
+
 ## 1.5.2 - 2026-10-23
 
 - Parallel sessions: a finished run is added to the stored ledger (re-read just before the save), not to
