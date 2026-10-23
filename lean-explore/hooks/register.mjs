@@ -4,6 +4,8 @@
 // Agent files load at session start: every change applies from the next session.
 
 // OWNER is the stable part of the marker; files from 1.0 and 1.1 end in "/explore-haiku off parks it."
+import { KEY, emptyLedger, fromScan, addRun, summarize } from './stats.mjs'
+
 const OWNER = '# Written by the lean-explore mod.'
 const MARK = `${OWNER} /lean-explore off parks it.`
 
@@ -77,6 +79,45 @@ const NEXT = 'Start a new session for it to apply.'
 // the file on disk now, which a toggle or the first install changes. `searches` counts
 // this session's Explore runs.
 const view = { loaded: undefined, current: undefined, searches: 0 }
+
+// All-time numbers per model, kept in $.store. The first load fills it from the subagent
+// transcripts already on disk (backfill.py); after that every finished Explore run adds one.
+let ledger = emptyLedger()
+const live = new Map() // agentId -> the run in progress
+
+const tok = n => {
+  const v = Number(n) || 0
+  if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 1) + 'M'
+  if (v >= 1e3) return (v / 1e3).toFixed(v >= 1e5 ? 0 : 1) + 'k'
+  return String(Math.round(v))
+}
+
+async function scan($) {
+  const r = await $.process.run(['python3', '-I', `${$.plugin.root}/hooks/backfill.py`], { timeoutMs: 60000 })
+  if (r.exitCode !== 0) throw new Error(String(r.stderr || r.stdout).trim())
+  ledger = fromScan(JSON.parse(String(r.stdout).trim().split('\n').pop()))
+  await $.store.set(KEY, ledger)
+}
+
+async function loadLedger($) {
+  try {
+    const saved = await $.store.get(KEY)
+    if (saved && saved.v === 1) ledger = saved
+    if (!ledger.scanned) await scan($)
+  } catch { /* the chip just shows no totals */ }
+}
+
+function statsText() {
+  const s = summarize(ledger)
+  if (!s.runs) return s.otherRuns ? `No Haiku Explore runs yet (${s.otherRuns} ran on the built-in agent).` : 'No Explore runs recorded yet.'
+  const lines = [
+    `Lean Explore, all time: ${s.runs} Haiku search${s.runs === 1 ? '' : 'es'}, ${s.reads} file reads/searches.`,
+    `Delegated to Haiku: ${tok(s.delegated)} tokens (${tok(s.fresh)} billed fresh, ${tok(s.cached)} served from cache), ${tok(s.avgPerRun)} per search.`,
+    `Kept out of your main chat: about ${tok(s.keptOutOfChat)} tokens of file text the agent read; only ~${tok(s.reportTokens)} of reports came back.`,
+  ]
+  if (s.otherRuns) lines.push(`${s.otherRuns} earlier search${s.otherRuns === 1 ? '' : 'es'} ran on the built-in agent and are not counted above.`)
+  return lines.join('\n')
+}
 const kind = s => (s === 'on' ? 'Haiku' : 'built-in')
 const pending = () => kind(view.current) !== kind(view.loaded)
 
@@ -123,11 +164,17 @@ function desktopChip($, e, below) {
   const n = view.searches
   const words = [`Explore: ${kind(view.loaded)}`]
   if (lean && n) words.push(`${n} search${n === 1 ? '' : 'es'}`)
+  const sum = summarize(ledger)
+  if (lean && sum.delegated) words.push(`${tok(sum.delegated)} tokens delegated`)
   if (pending()) words.push(`${kind(view.current)} next session`)
   const chip = Text({ children: [Text({ color: lean ? 'success' : 'warning', children: ['●'] }), ` ${words.join(' · ')}`] })
 
   const card = [Text({ bold: true, children: [lean ? 'Lean Explore on Haiku' : 'Built-in Explore agent'] })]
-  if (lean) card.push(Text({ children: ['Searches use about 3x fewer tokens than the built-in agent (an estimate from tests).'] }))
+  if (lean && sum.runs) {
+    card.push(Text({ children: [`All time: ${sum.runs} searches, ${sum.reads} reads`] }))
+    card.push(Text({ children: [`${tok(sum.delegated)} tokens ran on Haiku (${tok(sum.fresh)} fresh, ${tok(sum.cached)} cached)`] }))
+    card.push(Text({ children: [`~${tok(sum.keptOutOfChat)} tokens of file text kept out of your chat`] }))
+  } else if (lean) card.push(Text({ children: ['No searches recorded yet.'] }))
   else if (view.loaded === 'custom') card.push(Text({ children: ['Your own ~/.claude/agents/Explore.md is in use, so lean-explore stays out of the way.'] }))
   else card.push(Text({ children: ['Searches run on the full built-in agent. The lean one uses about 3x fewer tokens.'] }))
   if (pending()) card.push(Text({ dimColor: true, children: ['A change is waiting: start a new session to apply it.'] }))
@@ -184,7 +231,7 @@ export const register = on => {
   on('session.start', async ($, e, next) => {
     const out = await next(e)
     try {
-      await $.command.register({ name: 'lean-explore', description: 'Lean Haiku Explore agent: /lean-explore on|off|status', immediate: true })
+      await $.command.register({ name: 'lean-explore', description: 'Lean Haiku Explore agent: /lean-explore on|off|stats|rescan', immediate: true })
     } catch { /* name taken */ }
     try {
       const p = await paths($)
@@ -199,6 +246,8 @@ export const register = on => {
         await writeAgent($, p)
       }
       await track($, p)
+      await loadLedger($)
+      $.ui.invalidate('ui.render')
     } catch { /* never block a session start */ }
     return out
   })
@@ -206,8 +255,45 @@ export const register = on => {
   // Count Explore runs for the chip. Nothing about the spawn changes.
   on('agent.spawn', async ($, e, next) => {
     const r = await next(e)
-    if (e.subagentType === 'Explore' && r && r.deny === undefined) { view.searches += 1; $.ui.invalidate('ui.render') }
+    if (e.subagentType === 'Explore' && r && r.deny === undefined) {
+      view.searches += 1
+      if (r.agentId) live.set(r.agentId, { model: r.model, input: 0, cacheRead: 0, cacheWrite: 0, output: 0, readChars: 0, reportChars: 0, tools: {} })
+      $.ui.invalidate('ui.render')
+    }
     return r
+  })
+
+  // What each Explore run costs, step by step: the API's own usage figures.
+  on('turn.step', async function* ($, e, next) {
+    const r = yield* next(e)
+    const run = e.agentId && live.get(e.agentId)
+    if (run && r && r.usage) {
+      run.model = r.usage.model || run.model
+      run.input += r.usage.input_tokens; run.cacheRead += r.usage.cache_read_input_tokens
+      run.cacheWrite += r.usage.cache_creation_input_tokens; run.output += r.usage.output_tokens
+    }
+    return r
+  })
+
+  // What it read: one count per tool call, and the size of the text it got back.
+  on('tool.call', async ($, e, next) => {
+    const r = await next(e)
+    const run = e.agentId && live.get(e.agentId)
+    if (run && r && r.deny === undefined) {
+      run.tools[e.tool] = (run.tools[e.tool] ?? 0) + 1
+      run.readChars += typeof r.text === 'string' ? r.text.length : 0
+    }
+    return r
+  })
+
+  on('turn.complete', async ($, e, next) => {
+    const run = e.agentId && live.get(e.agentId)
+    if (run) {
+      live.delete(e.agentId)
+      run.reportChars = String(e.answer ?? '').length
+      try { addRun(ledger, run); await $.store.set(KEY, ledger); $.ui.invalidate('ui.render') } catch { /* keep going */ }
+    }
+    return next(e)
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -228,8 +314,13 @@ export const register = on => {
   on('command.run', { command: 'lean-explore' }, async ($, e) => {
     const want = String(e.args ?? '').trim().toLowerCase()
     if (want === 'on' || want === 'off') return { text: await turn($, want) }
+    if (want === 'stats') return { text: statsText() }
+    if (want === 'rescan') {
+      try { await scan($) } catch (err) { return { text: `Could not rescan the transcripts: ${err.message}` } }
+      return { text: `Rescanned every past Explore run.\n${statsText()}` }
+    }
     const now = await state($, await paths($))
     const said = { on: 'on', off: 'off (parked as Explore.md.off)', missing: 'not installed', custom: 'off - a custom Explore.md not written by this mod is in use' }[now]
-    return { text: `Lean Explore agent: ${said}. Type /lean-explore on or /lean-explore off. Changes apply from the next session.` }
+    return { text: `Lean Explore agent: ${said}. Type /lean-explore on or /lean-explore off. Changes apply from the next session. /lean-explore stats shows what it has saved.` }
   })
 }

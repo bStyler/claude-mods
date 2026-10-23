@@ -174,3 +174,26 @@ test('desktop chip draws the shared row itself when no other mod has, so an oute
   expect(String((await ui.find({ key: 'mods-row' }))?.text ?? '')).toContain('Explore: Haiku')
   await ui.unmount()
 })
+
+import { addRun, emptyLedger, fromScan, summarize } from './stats.mjs'
+
+test('ledger: Haiku runs are delegated tokens, other models are only counted', () => {
+  const l = emptyLedger()
+  addRun(l, { model: 'claude-haiku-4-5', input: 10, cacheRead: 900, cacheWrite: 50, output: 40, readChars: 8000, reportChars: 400, tools: { Read: 3, Grep: 2, Bash: 1 } })
+  addRun(l, { model: 'claude-haiku-4-5', input: 0, cacheRead: 100, cacheWrite: 0, output: 10, readChars: 0, reportChars: 0, tools: { Glob: 1 } })
+  addRun(l, { model: 'claude-sonnet-5', input: 5, cacheRead: 5, cacheWrite: 5, output: 5, readChars: 100, reportChars: 10, tools: { Read: 9 } })
+  const s = summarize(l)
+  expect(s.runs).toBe(2)
+  expect(s.otherRuns).toBe(1)
+  expect(s.delegated).toBe(1110)
+  expect(s.fresh).toBe(110)
+  expect(s.cached).toBe(1000)
+  expect(s.reads).toBe(6)
+  expect(s.keptOutOfChat).toBe(1900)
+})
+
+test('ledger: a scan replaces what was there', () => {
+  const l = fromScan({ byModel: { 'claude-haiku-4-5': { runs: 4, input: 1, cacheRead: 2, cacheWrite: 3, output: 4, readChars: 40, reportChars: 0, tools: { Read: 2 } } } })
+  expect(l.scanned).toBe(true)
+  expect(summarize(l).delegated).toBe(10)
+})

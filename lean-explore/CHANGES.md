@@ -1,0 +1,17 @@
+# lean-explore (HelloChakra changes)
+
+Based on bStyler's `lean-explore` 1.4.0 (claude-super-mods).
+
+## 1.5.0 - 2026-10-23
+
+- Replaced the "about 3x fewer tokens (an estimate from tests)" claim with measured numbers.
+  A ledger in `$.store` keeps, per model: runs, uncached/cache-read/cache-write/output tokens,
+  tool calls (reads, greps, globs), tool-result size and report size.
+- First load fills the ledger from the Explore subagent transcripts already on disk
+  (`hooks/backfill.py`, read-only); after that every finished Explore run adds one row
+  from `turn.step` usage, `tool.call` results and `turn.complete`.
+- Chip: "N tokens delegated" next to the session's search count. Hover card: all-time searches,
+  reads, tokens on Haiku (fresh vs cached) and file text kept out of the chat.
+- `/lean-explore stats` and `/lean-explore rescan` (rebuilds the ledger from disk).
+- "Kept out of chat" = tool-result text the agent read minus the report it returned, at 4 chars
+  per token: an estimate. Everything else is the API's own usage figures.
