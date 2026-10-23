@@ -99,6 +99,8 @@ async function scan($) {
   await $.store.set(KEY, ledger)
 }
 
+let refresher
+
 async function loadLedger($) {
   try {
     const saved = await $.store.get(KEY)
@@ -247,6 +249,14 @@ export const register = on => {
       await track($, p)
       await loadLedger($)
       $.ui.invalidate('ui.render')
+      // Pick up runs finished by sessions open at the same time.
+      refresher?.cancel()
+      refresher = $.clock.every(30000, async () => {
+        try {
+          const stored = await $.store.get(KEY)
+          if (stored && stored.v === 1 && JSON.stringify(stored) !== JSON.stringify(ledger)) { ledger = stored; $.ui.invalidate('ui.render') }
+        } catch { /* try again next period */ }
+      })
     } catch { /* never block a session start */ }
     return out
   })
@@ -290,7 +300,15 @@ export const register = on => {
     if (run) {
       live.delete(e.agentId)
       run.reportChars = String(e.answer ?? '').length
-      try { addRun(ledger, run); await $.store.set(KEY, ledger); $.ui.invalidate('ui.render') } catch { /* keep going */ }
+      try {
+        // Other sessions write the same key: add this run to what is stored now, not to the
+        // copy loaded at session start, so parallel sessions do not overwrite each other.
+        const stored = await $.store.get(KEY)
+        if (stored && stored.v === 1) ledger = stored
+        addRun(ledger, run)
+        await $.store.set(KEY, ledger)
+        $.ui.invalidate('ui.render')
+      } catch { /* keep going */ }
     }
     return next(e)
   })

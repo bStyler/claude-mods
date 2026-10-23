@@ -2,6 +2,12 @@
 
 Based on bStyler's `lean-explore` 1.4.0 (claude-super-mods).
 
+## 1.5.2 - 2026-10-23
+
+- Parallel sessions: a finished run is added to the stored ledger (re-read just before the save), not to
+  the copy loaded at session start, so sessions no longer overwrite each other's counts. Each session
+  re-reads the stored ledger every 30 s, so the chip follows runs finished in other windows.
+
 ## 1.5.1 - 2026-10-23
 
 - Chip above the prompt is just `● Haiku · 25.7M` (dot, model, tokens delegated). Searches, reads and
