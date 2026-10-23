@@ -2,6 +2,11 @@
 
 Based on bStyler's `lean-explore` 1.4.0 (claude-super-mods).
 
+## 1.5.1 - 2026-10-23
+
+- Chip above the prompt is just `● Haiku · 25.7M` (dot, model, tokens delegated). Searches, reads and
+  the fresh/cached split are in the hover card.
+
 ## 1.5.0 - 2026-10-23
 
 - Replaced the "about 3x fewer tokens (an estimate from tests)" claim with measured numbers.

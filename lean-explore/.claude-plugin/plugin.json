@@ -1,6 +1,6 @@
 {
   "name": "lean-explore",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Replaces the built-in Explore subagent with a lean one on Haiku (Read/Grep/Glob only, short answers) and counts what it actually did: searches, reads, tokens delegated to Haiku, file text kept out of the main chat. /lean-explore on|off|stats|rescan.",
   "author": {
     "name": "bStyler"

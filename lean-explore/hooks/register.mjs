@@ -161,18 +161,17 @@ function desktopChip($, e, below) {
   if (!view.loaded) return below
   const { Box, Text, Button } = $.ui.resolve(e)
   const lean = view.loaded === 'on'
-  const n = view.searches
-  const words = [`Explore: ${kind(view.loaded)}`]
-  if (lean && n) words.push(`${n} search${n === 1 ? '' : 'es'}`)
+  // Lean on purpose: the dot, the model, one number. The card says what the number is.
   const sum = summarize(ledger)
-  if (lean && sum.delegated) words.push(`${tok(sum.delegated)} tokens delegated`)
+  const words = [kind(view.loaded)]
+  if (lean && sum.delegated) words.push(tok(sum.delegated))
   if (pending()) words.push(`${kind(view.current)} next session`)
   const chip = Text({ children: [Text({ color: lean ? 'success' : 'warning', children: ['●'] }), ` ${words.join(' · ')}`] })
 
-  const card = [Text({ bold: true, children: [lean ? 'Lean Explore on Haiku' : 'Built-in Explore agent'] })]
+  const card = [Text({ bold: true, children: [lean ? 'Explore on Haiku' : 'Built-in Explore agent'] })]
   if (lean && sum.runs) {
-    card.push(Text({ children: [`All time: ${sum.runs} searches, ${sum.reads} reads`] }))
-    card.push(Text({ children: [`${tok(sum.delegated)} tokens ran on Haiku (${tok(sum.fresh)} fresh, ${tok(sum.cached)} cached)`] }))
+    card.push(Text({ children: [`All time: ${sum.runs} searches, ${sum.reads} reads${view.searches ? ` (${view.searches} this chat)` : ''}`] }))
+    card.push(Text({ children: [`${tok(sum.delegated)} tokens delegated to Haiku (${tok(sum.fresh)} fresh, ${tok(sum.cached)} cached)`] }))
     card.push(Text({ children: [`~${tok(sum.keptOutOfChat)} tokens of file text kept out of your chat`] }))
   } else if (lean) card.push(Text({ children: ['No searches recorded yet.'] }))
   else if (view.loaded === 'custom') card.push(Text({ children: ['Your own ~/.claude/agents/Explore.md is in use, so lean-explore stays out of the way.'] }))
