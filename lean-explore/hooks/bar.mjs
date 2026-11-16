@@ -15,7 +15,7 @@ export const BAR = 'mods-bar'
 const BAR_KEY = 'mods-bar-row'
 
 // Left to right. Status first (each with its own buttons beside it), then the action buttons.
-const STATUS = ['reply-cost', 'smart-precompact-mod', 'lean-explore']
+const STATUS = ['cache-keeper', 'reply-cost', 'smart-precompact-mod', 'lean-explore']
 const ACTIONS = ['hebrew-tools', 'tldr', 'copy-chat', 'session-closer', 'second-opinion']
 const ORDER = [...STATUS, ...ACTIONS]
 
@@ -37,6 +37,7 @@ const KEY_OWNER = {
   hebrew: 'hebrew-tools',
   direction: 'hebrew-tools',
   'lean-explore': 'lean-explore',
+  'cache-keeper': 'cache-keeper',
   'tldr-on': 'tldr',
   'tldr-off': 'tldr',
   'copy-chat': 'copy-chat',
@@ -104,5 +105,5 @@ export const joinBar = (beneath, items, o) => {
   const children = [...status, spacer, ...actions] 
   const props = { key: BAR_KEY, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 1 }
   if (row) return replace(beneath, row, { ...row, props: { ...row.props, ...props }, children: children })
-  return box({ flexDirection: 'column', children: [box({ ...props, children }), beneath] })
+  return box({ flexDirection: 'column', children: beneath ? [box({ ...props, children }), beneath] : [box({ ...props, children })] })
 }

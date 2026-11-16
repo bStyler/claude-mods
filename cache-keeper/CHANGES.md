@@ -3,6 +3,14 @@
 Based on Nate Herk's `cache-keeper` 1.0.0. To rebase onto a new upstream version:
 diff upstream 1.0.0 against the new one, then reapply the list below to the new code.
 
+## 1.5.0 - 2026-11-16
+
+- Desktop: the status line and Keep warm button now sit in the shared mods-bar row
+  (beside Explore, TL;DR and Copy) instead of a stacked row of their own. Depends on mods-bar.
+- bar.mjs: cache-keeper joins the left status group. lean-explore and tldr carry the same
+  updated copy. joinBar no longer fails when no row is beneath.
+- The desktop part cannot be mounted by the test harness, so it is checked live.
+
 ## 1.4.0 - 2026-11-16
 
 - Own Keep warm button. The band now shows `Keep warm` whenever the cache is warm

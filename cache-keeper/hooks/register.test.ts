@@ -128,7 +128,9 @@ const warmUp = async ($: any) => {
   await step.result
 }
 
-test('desktop band keeps its own Keep warm button while the cache is warm', async ($: any, on: any) => {
+// Desktop: this mod draws no row of its own. Its status and Keep warm button join the
+// shared mods-bar row, which the test harness cannot mount, so that part is checked live.
+test('desktop leaves its own row empty (the part joins the mods-bar row)', async ($: any, on: any) => {
   const w = world(on)
   on('session.measure', (_$: any, e: any) => e)
   on('ui.render', ($: any, e: any) => $.ui.resolve(e).Box({ children: [] }))
@@ -138,24 +140,7 @@ test('desktop band keeps its own Keep warm button while the cache is warm', asyn
   await warmUp($)
   await w.clock.advance(60_000)
   const ui = await $.ui.mount({ plugin: 'cache-keeper', surface: 'desktop', ...BAND(200) })
-  expect(await textOf(ui, /Cache warm/)).toMatch(/Cache warm/)
-  expect(await textOf(ui, /Opus|ctx|session/)).toBe('')
-  expect(await ui.find({ type: 'Button', label: 'Keep warm' })).toBeTruthy()
-  await ui.unmount()
-})
-
-test('desktop band warns in one line when a big cache is cold', async ($: any, on: any) => {
-  const w = world(on)
-  on('session.measure', (_$: any, e: any) => e)
-  on('ui.render', ($: any, e: any) => $.ui.resolve(e).Box({ children: [] }))
-  stepHook(on)
-  await start($)
-  await measure($, 312_000)
-  await warmUp($)
-  await w.clock.advance(61 * 60_000)
-  const ui = await $.ui.mount({ plugin: 'cache-keeper', surface: 'desktop', ...BAND(200) })
-  expect(await textOf(ui, /Cache cold/)).toMatch(/next send rewrites it ≈ \$/)
-  expect(await textOf(ui, /Opus|ctx/)).toBe('')
+  expect(await textOf(ui, /Opus|ctx|session|Cache|Keep warm/)).toBe('')
   await ui.unmount()
 })
 
@@ -237,22 +222,3 @@ test('after a compaction the band shows a receipt until OK', async ($: any, on: 
   await after.unmount()
 })
 
-test('the desktop band shows the receipt, and fills in the size after when core did not report it', async ($: any, on: any) => {
-  const w = world(on, 'Cancel', { compact: () => ({ messages: SUMMARY, tokensBefore: 300_000 }) })
-  on('session.measure', (_$: any, e: any) => e)
-  on('ui.render', ($: any, e: any) => $.ui.resolve(e).Box({ children: [] }))
-  await start($)
-  await measure($, 300_000)
-  await $.session.compact({ trigger: 'auto', messages: SUMMARY })
-  const ui = await $.ui.mount({ plugin: 'cache-keeper', surface: 'desktop', ...BAND(200) })
-  expect(await textOf(ui, /Compacted/)).toContain('size after your next message')
-  await ui.unmount()
-  await measure($, 30_000)
-  const after = await $.ui.mount({ plugin: 'cache-keeper', surface: 'desktop', ...BAND(200) })
-  expect(await textOf(after, /Compacted/)).toBe('✓ Compacted 300k → 30.0k · 270k lighter')
-  await after.unmount()
-  await w.clock.advance(11 * 60_000)
-  const later = await $.ui.mount({ plugin: 'cache-keeper', surface: 'desktop', ...BAND(200) })
-  expect(await textOf(later, /Compacted/)).toBe('')
-  await later.unmount()
-})

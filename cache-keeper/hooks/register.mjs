@@ -10,6 +10,7 @@
 
 import { rewriteCost, requestCost, totalInput, cachedShare, priceFor } from './pricing.mjs'
 import { tokens, usd, minutes, clock, clip, basename, pad, bar } from './fmt.mjs'
+import { joinBar } from './bar.mjs'
 import { makeMasker } from './privacy.mjs'
 
 const MIN = 60000
@@ -845,7 +846,8 @@ export function register(on) {
     if (e.props && e.props.hasSurvey) return below
     if (!S.model && !S.lastActivity && !S.keepWarm) return below
     now = await $.clock.now()
-    if (e.surface === 'desktop') return desktopAlert($, e, below)
+    // Desktop: the part lives in the shared mods-bar row (hook below), not a row of its own
+    if (e.surface === 'desktop') return below
     const { Box, Text, Button } = $.ui.resolve(e)
     const hb = myHeartbeat()
     const st = cacheState(hb)
@@ -898,6 +900,15 @@ export function register(on) {
     }
     const mine = Box({ flexDirection: 'row', justifyContent: 'space-between', width: '100%', columnGap: 2, children: [left, right] })
     return Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
+  })
+
+  // Desktop: this mod's part joins the shared mods-bar row, so it sits beside the other mods' chips
+  on('ui.render', { component: 'AbovePrompt', plugin: 'mods-bar' }, async ($, e, next) => {
+    const below = await next(e)
+    if (e.surface !== 'desktop' || (e.props && e.props.hasSurvey)) return below
+    if (!S.model && !S.lastActivity && !S.keepWarm) return below
+    now = await $.clock.now()
+    return desktopAlert($, e, below)
   })
 
   on('ui.render', { component: 'Pane' }, async ($, e, next) => {
@@ -964,9 +975,8 @@ function desktopAlert($, e, below) {
   } else if (handoffPending || H.armed) {
     right.push(Text({ dimColor: true, children: [handoffPending ? 'Handoff queued' : 'Handoff running'] }))
   }
-  // paddingTop: space from Token Optimizer's card, which sits right above
-  const mine = Box({ flexDirection: 'row', justifyContent: 'space-between', width: '100%', columnGap: 2, paddingTop: 'sm', children: [Box({ flexDirection: 'row', columnGap: 2, children: left }), Box({ flexDirection: 'row', columnGap: 2, children: right })] })
-  return Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
+  const mine = Box({ key: 'cache-keeper', flexDirection: 'row', alignItems: 'center', columnGap: 2, flexWrap: 'wrap', children: [...left, ...right] })
+  return joinBar(below, [mine], { Box, owner: 'cache-keeper' })
 }
 
 function dismissReceipt($, Button, label) {
