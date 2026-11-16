@@ -128,7 +128,7 @@ const warmUp = async ($: any) => {
   await step.result
 }
 
-test('desktop band draws nothing while the cache is warm', async ($: any, on: any) => {
+test('desktop band keeps its own Keep warm button while the cache is warm', async ($: any, on: any) => {
   const w = world(on)
   on('session.measure', (_$: any, e: any) => e)
   on('ui.render', ($: any, e: any) => $.ui.resolve(e).Box({ children: [] }))
@@ -138,7 +138,9 @@ test('desktop band draws nothing while the cache is warm', async ($: any, on: an
   await warmUp($)
   await w.clock.advance(60_000)
   const ui = await $.ui.mount({ plugin: 'cache-keeper', surface: 'desktop', ...BAND(200) })
-  expect(await textOf(ui, /Opus|ctx|session|Cache/)).toBe('')
+  expect(await textOf(ui, /Cache warm/)).toMatch(/Cache warm/)
+  expect(await textOf(ui, /Opus|ctx|session/)).toBe('')
+  expect(await ui.find({ type: 'Button', label: 'Keep warm' })).toBeTruthy()
   await ui.unmount()
 })
 

@@ -871,7 +871,7 @@ export function register(on) {
     if (S.coldRestarts.length) segs.push(['cold', `${S.coldRestarts.length} cold restart${S.coldRestarts.length === 1 ? '' : 's'} ${money(S.coldRestarts.reduce((a, c) => a + c.usd, 0))}`, { dimColor: true }])
     // Too wide for the row beside the buttons: drop the bar, keep the numbers
     const cols = (e.props && e.props.bodyColumns) || 0
-    const reserve = 12 + (H.text || H.continuing ? 22 : 0) + (st.kind === 'kept' || (st.kind === 'cooling' && big) ? 13 : 0)
+    const reserve = 12 + (H.text || H.continuing ? 22 : 0) + (st.kind === 'kept' || st.kind === 'cooling' || st.kind === 'warm' ? 13 : 0)
     const width = segs.reduce((a, s) => a + s[1].length, 0) + 3 * (segs.length - 1) + reserve
     if (cols && width > cols) {
       const ctx = segs.find((s) => s[0] === 'ctx')
@@ -880,7 +880,7 @@ export function register(on) {
     const parts = segs.map(([, text, props], i) => Text({ ...props, children: [(i ? ' │ ' : '') + text] }))
     const row = [Box({ flexDirection: 'row', children: parts })]
     if (done) row.push(dismissReceipt($, Button, 'ok'))
-    if (st.kind === 'cooling' && big) {
+    if (st.kind === 'cooling' || st.kind === 'warm') {
       row.push(Button({ key: 'keepwarm', label: 'keep warm', hotkey: '1', plain: true, onPress: async () => { now = await $.clock.now(); startKeepWarm($, settings.keepWarmHours); await heartbeat($, true); $.ui.invalidate('ui.render') } }))
     } else if (st.kind === 'kept') {
       row.push(Button({ key: 'keepwarm', label: 'stop warm', hotkey: '1', plain: true, onPress: async () => { now = await $.clock.now(); stopKeepWarm($, 'turned off'); await heartbeat($, true); $.ui.invalidate('ui.render') } }))
@@ -940,13 +940,20 @@ function desktopAlert($, e, below) {
   } else if (st.kind === 'cold' && big) {
     line = `○ Cache cold · the next send rewrites it ≈ ${rewrite}`
     style = { color: 'red', bold: true }
+  } else if (st.kind === 'warm') {
+    // Always-on: this mod's own Keep warm button, so nothing depends on Token Optimizer's card.
+    line = `● Cache warm ${minutes(st.left)}`
+    style = { color: 'green' }
+  } else if (st.kind === 'cooling') {
+    line = `◐ Cache cools in ${minutes(st.left)}`
+    style = { color: 'yellow' }
   }
   if (!line && !handoffBusy) return below
   const { Box, Text, Button } = $.ui.resolve(e)
   const left = []
   if (line) left.push(Text({ ...style, children: [line] }))
   if (done) left.push(dismissReceipt($, Button, 'OK'))
-  else if (st.kind === 'cooling' && big) {
+  else if (st.kind === 'cooling' || st.kind === 'warm') {
     left.push(Button({ key: 'keepwarm', label: 'Keep warm', hotkey: '1', plain: true, onPress: async () => { now = await $.clock.now(); startKeepWarm($, settings.keepWarmHours); await heartbeat($, true); $.ui.invalidate('ui.render') } }))
   } else if (st.kind === 'kept') {
     left.push(Button({ key: 'keepwarm', label: 'Stop', hotkey: '1', plain: true, onPress: async () => { now = await $.clock.now(); stopKeepWarm($, 'turned off'); await heartbeat($, true); $.ui.invalidate('ui.render') } }))

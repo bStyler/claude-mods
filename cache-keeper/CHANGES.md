@@ -3,6 +3,13 @@
 Based on Nate Herk's `cache-keeper` 1.0.0. To rebase onto a new upstream version:
 diff upstream 1.0.0 against the new one, then reapply the list below to the new code.
 
+## 1.4.0 - 2026-11-16
+
+- Own Keep warm button. The band now shows `Keep warm` whenever the cache is warm
+  or cooling, on desktop and in the terminal, for any chat size. Before, it showed
+  only for a big chat in its last minutes. Token Optimizer's keep-warm is no longer needed.
+- Desktop band draws one quiet line (`Cache warm 41m`) with the button, instead of nothing.
+
 ## 1.3.0 - 2026-10-21
 
 Three ideas taken from JayGPTPro's Smart PreCompact (github.com/JayGPTPro/smart-precompact):
