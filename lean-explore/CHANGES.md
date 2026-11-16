@@ -2,6 +2,10 @@
 
 Based on bStyler's `lean-explore` 1.4.0 (claude-super-mods).
 
+## 1.7.2 - 2026-11-16
+
+- Shared bar file: knows memory-guard's part, so the row orders Explore, then Memory guard, then the buttons.
+
 ## 1.7.1 - 2026-11-16
 
 - Depends on the new `mods-bar` plugin (same marketplace), so the shared row is installed with it.

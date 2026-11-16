@@ -3,6 +3,10 @@
 Based on Nate Herk's `cache-keeper` 1.0.0. To rebase onto a new upstream version:
 diff upstream 1.0.0 against the new one, then reapply the list below to the new code.
 
+## 1.5.1 - 2026-11-17
+
+- bar.mjs: the shared copy now knows memory-guard (after Explore in the left status group).
+
 ## 1.5.0 - 2026-11-16
 
 - Desktop: the status line and Keep warm button now sit in the shared mods-bar row

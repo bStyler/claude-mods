@@ -1,1 +1,1 @@
-{ "name": "mods-bar", "version": "0.1.0", "description": "One shared row above the prompt where the Copy chat and TL;DR buttons sit side by side" }
+{ "name": "mods-bar", "version": "0.2.0", "description": "One shared row above the prompt where the Copy chat, TL;DR, Explore and Memory guard parts sit side by side" }

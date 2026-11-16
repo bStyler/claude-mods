@@ -14,6 +14,7 @@
 // - The mod sends no model requests of its own.
 
 import { makeMasker } from './privacy.mjs'
+import { joinBar } from './bar.mjs'
 
 const DEFAULTS = {
   enabled: true,
@@ -334,6 +335,47 @@ function drawBand($, el) {
   return null
 }
 
+// Memory guard's part of the shared mods-bar row (desktop): one line, no hover card (a card
+// opening inside a shared row would move the buttons beside it). The label says the details in
+// a toast; the nudge and the catch-up offer become buttons beside it instead of rows of their own.
+function barPart($, el) {
+  const { Box, Text, Button } = el
+  const on = watched()
+  const s = cur
+  const nudge = on && cfg.ui.band && s && s.nudged && !s.memorized && !s.dismissed
+  const catchUp = !nudge && on && cfg.ui.band && !bandHidden && startQueue.length > 0 && queueCount > 0
+  if (!cfg.ui.chip && !nudge && !catchUp) return null
+  const words = [`Memory guard: ${on ? 'on' : 'off'}`]
+  if (on && s) words.push(s.memorized ? 'saved' : `${score(s)} of ${cfg.threshold}`)
+  if (on && queueCount) words.push(`${queueCount} unmemorized`)
+  const detail = !on
+    ? 'Memory guard is not watching this project. /memory-guard on turns it on.'
+    : nudge
+      ? `This session has ${s.signals.map(label).join(', ') || 'a lot of work'}. Save what it learned with Memorize now, or /${skillName()}.`
+      : `Watching this session for work worth remembering. It nudges once at ${cfg.threshold} points${s && s.signals.length ? `; so far: ${s.signals.map(label).join(', ')}` : ''}. /memory-guard off turns it off here.`
+  const parts = [
+    Text({ color: on ? 'success' : 'inactive', children: ['●'] }),
+    Button({ key: 'memory-guard', label: words.join(' · '), plain: true, onPress: () => $.ui.toast(detail, { timeoutMs: 8000 }) }),
+  ]
+  if (nudge) {
+    parts.push(
+      Button({ key: 'memory-guard-memorize', label: 'Memorize now', onPress: () => runSkill($, '') }),
+      Button({ key: 'memory-guard-dismiss', label: 'Not now', onPress: async () => {
+        const r = await load($)
+        r.dismissed = true
+        await save($, r)
+        $.ui.invalidate('ui.render')
+      } }),
+    )
+  } else if (catchUp) {
+    parts.push(
+      Button({ key: 'memory-guard-catchup', label: 'Catch up', onPress: () => runSkill($, 'queue') }),
+      Button({ key: 'memory-guard-hide', label: 'Hide', onPress: () => { bandHidden = true; $.ui.invalidate('ui.render') } }),
+    )
+  }
+  return Box({ key: 'memory-guard', flexDirection: 'row', alignItems: 'center', columnGap: 1, children: parts })
+}
+
 // The hooks on the path of a prompt, a tool call or a session start log a failure of the
 // mod's own and let the event go on as if the mod were absent.
 function logged($, where, err, value) {
@@ -459,6 +501,17 @@ export const register = (on) => {
     if (drawn) rows.push(desktop ? el.Box({ key: 'memory-guard', marginTop: 'md', children: [drawn] }) : drawn)
     if (!rows.length) return rest
     return el.Box({ flexDirection: 'column', children: rest ? [...rows, rest] : rows })
+  })
+
+  // With the mods-bar mod installed, the desktop chip, nudge and catch-up offer sit in its shared
+  // row, and mods-bar hides this mod's own desktop row. The terminal keeps the rows above.
+  on('ui.render', { component: 'AbovePrompt', plugin: 'mods-bar' }, async ($, e, next) => {
+    const below = await next(e)
+    if (e.surface !== 'desktop' || (e.props && e.props.hasSurvey)) return below
+    await ensure($)
+    const el = $.ui.resolve(e)
+    const mine = barPart($, el)
+    return mine ? joinBar(below, [mine], { Box: el.Box, owner: 'memory-guard' }) : below
   })
 
   // The terminal gets a short footer label; on desktop the chip says it.

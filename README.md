@@ -7,7 +7,7 @@ Four Claude Code mods, published as a plugin marketplace named `claude-super-mod
 | **goal-meter** 1.2.1 | A progress bar for `/goal`, built from Claude's own task plan. One line by default. `/goals` opens the full task list. |
 | **cache-keeper** 1.3.0 | A band above the prompt with the model, effort, context bar, plan limits (with the 5h reset) and cache state, so no status line is needed. Keeps a long chat's prompt cache warm (`/keepwarm 2`), asks before an expensive cold send, shows every local chat (`/board`), and hands a chat off (`/handoff`). Every compaction without its own instructions is told what to keep, and the band shows how much it saved. |
 | **lean-explore** 1.6.0 | Replaces the built-in Explore subagent (the one that does codebase searches) with a lean one: Haiku, low effort, Read/Grep/Glob only, short answers with file:line. It counts what it really did (searches, reads, tokens delegated to Haiku) from your own transcripts. `/lean-explore on\|off\|status\|stats\|rescan`. |
-| **memory-guard** 0.2.2 | Spots sessions worth remembering (files written to output folders, MCP writes, meeting transcripts, decisions, commits, accepted plans, long chats) and nudges once to run `/memorize`. A session that ends without it is queued, and the next session in that project offers to catch up. Files into your wiki if you point it at one, else Claude Code's own auto-memory. Ships its own `/memorize` skill. |
+| **memory-guard** 0.3.0 | Spots sessions worth remembering (files written to output folders, MCP writes, meeting transcripts, decisions, commits, accepted plans, long chats) and nudges once to run `/memorize`. A session that ends without it is queued, and the next session in that project offers to catch up. Files into your wiki if you point it at one, else Claude Code's own auto-memory. Ships its own `/memorize` skill. |
 
 
 ## lean-explore
@@ -38,6 +38,10 @@ transcript read, a decision in your prompt ("let's go with", "from now on"), a `
 an accepted plan. Ten turns or more adds one. At 2 points it nudges once: a toast, a band
 above the prompt with **Memorize now** and **Not this session**, and `/memorize` as the
 prompt suggestion. A session that ends without `/memorize` goes on that project's queue.
+
+On desktop, with the `mods-bar` mod (installed with it), the chip, the nudge's **Memorize now** / **Not now**
+buttons and the catch-up offer sit in the shared mods-bar row beside Explore and TL;DR, one line
+instead of rows of their own. Press the chip's label for the details. The terminal keeps the rows.
 The next session there shows **Catch up**, and the hint line says `· 3 unmemorized`.
 
 With no setup it files into Claude Code's auto-memory (`~/.claude/projects/<project>/memory/`

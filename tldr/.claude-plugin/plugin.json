@@ -1,6 +1,6 @@
 {
   "name": "tldr",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Highlights in yellow the few paragraphs of a long reply worth reading, says the reply in one sentence, and puts an on/off button above the prompt",
   "types": "./types/index.d.ts",
   "author": {

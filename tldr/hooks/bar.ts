@@ -19,7 +19,7 @@ export const BAR = 'mods-bar'
 const BAR_KEY = 'mods-bar-row'
 
 // Left to right. Status first (each with its own buttons beside it), then the action buttons.
-const STATUS = ['cache-keeper', 'reply-cost', 'smart-precompact-mod', 'lean-explore']
+const STATUS = ['cache-keeper', 'reply-cost', 'smart-precompact-mod', 'lean-explore', 'memory-guard']
 const ACTIONS = ['hebrew-tools', 'tldr', 'copy-chat', 'session-closer', 'second-opinion']
 const ORDER = [...STATUS, ...ACTIONS]
 
@@ -42,6 +42,7 @@ const KEY_OWNER: Record<string, string> = {
   direction: 'hebrew-tools',
   'lean-explore': 'lean-explore',
   'cache-keeper': 'cache-keeper',
+  'memory-guard': 'memory-guard',
   'tldr-on': 'tldr',
   'tldr-off': 'tldr',
   'copy-chat': 'copy-chat',
