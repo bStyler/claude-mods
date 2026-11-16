@@ -24,6 +24,11 @@
       "name": "memory-guard",
       "source": "./memory-guard",
       "description": "Spots sessions worth remembering, nudges once to run /memorize, and queues the ones that ended without it for the next session. Files into your wiki if you have one, else Claude Code's auto-memory."
+    },
+    {
+      "name": "mods-bar",
+      "source": "./mods-bar",
+      "description": "One shared row above the prompt where the Copy chat, TL;DR and Explore chip buttons sit side by side instead of stacking"
     }
   ]
 }

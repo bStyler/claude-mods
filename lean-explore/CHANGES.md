@@ -2,6 +2,10 @@
 
 Based on bStyler's `lean-explore` 1.4.0 (claude-super-mods).
 
+## 1.7.1 - 2026-11-16
+
+- Depends on the new `mods-bar` plugin (same marketplace), so the shared row is installed with it.
+
 ## 1.7.0 - 2026-11-16
 
 - Joins the shared `mods-bar` row (with Copy chat and TL;DR) as a one-line chip: dot, model, tokens, plus a Turn on/off button. Press the label for the details in a toast. Without the `mods-bar` mod it draws its own row as before.
