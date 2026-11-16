@@ -29,6 +29,11 @@
       "name": "mods-bar",
       "source": "./mods-bar",
       "description": "One shared row above the prompt where the Copy chat, TL;DR and Explore chip buttons sit side by side instead of stacking"
+    },
+    {
+      "name": "tldr",
+      "source": "./tldr",
+      "description": "Highlights in yellow the few paragraphs of a long reply worth reading, says the reply in one sentence, and adds an on/off button to the shared mods-bar row. Original by JayGPTPro (jaygptpro.com); modified to join mods-bar."
     }
   ]
 }

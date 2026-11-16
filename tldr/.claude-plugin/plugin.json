@@ -1,0 +1,13 @@
+{
+  "name": "tldr",
+  "version": "1.0.0",
+  "description": "Highlights in yellow the few paragraphs of a long reply worth reading, says the reply in one sentence, and puts an on/off button above the prompt",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "JayGPTPro",
+    "url": "https://jaygptpro.com"
+  },
+  "dependencies": [
+    "mods-bar"
+  ]
+}
