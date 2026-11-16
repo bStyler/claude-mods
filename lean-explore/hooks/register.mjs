@@ -5,6 +5,7 @@
 
 // OWNER is the stable part of the marker; files from 1.0 and 1.1 end in "/explore-haiku off parks it."
 import { KEY, emptyLedger, fromScan, addRun, summarize } from './stats.mjs'
+import { joinBar } from './bar.mjs'
 
 const OWNER = '# Written by the lean-explore mod.'
 const MARK = `${OWNER} /lean-explore off parks it.`
@@ -202,6 +203,32 @@ function desktopChip($, e, below) {
   return Box({ flexDirection: 'column', children: below ? [own, below] : [own] })
 }
 
+// The same chip for the shared mods-bar row: one line, no hover card (a card opening inside a
+// shared row would move the buttons beside it). Pressing the label says the details in a toast.
+function barChip($, e, below) {
+  if (!view.loaded) return below
+  const { Box, Text, Button } = $.ui.resolve(e)
+  const lean = view.loaded === 'on'
+  const sum = summarize(ledger)
+  const words = [`Explore: ${lean ? 'Haiku' : kind(view.loaded)}`]
+  if (lean && sum.delegated) words.push(tok(sum.delegated))
+  if (pending()) words.push(`${kind(view.current)} next session`)
+  const detail = lean
+    ? (sum.runs ? `${sum.runs} searches, ${tok(sum.delegated)} tokens delegated to Haiku, ~${tok(sum.keptOutOfChat)} tokens of file text kept out of your chat` : 'Lean Explore is on. No searches recorded yet.')
+    : view.loaded === 'custom'
+      ? 'Your own ~/.claude/agents/Explore.md is in use, so lean-explore stays out of the way.'
+      : 'Searches run on the full built-in agent. The lean one uses about 3x fewer tokens.'
+  const say = () => $.ui.toast(detail + (pending() ? ' A change is waiting: start a new session to apply it.' : ''), { timeoutMs: 8000 })
+  const act = (label, want) => Button({ key: `lean-explore-${want}`, label, onPress: async () => { $.ui.toast(await turn($, want), { timeoutMs: 8000 }) } })
+  const parts = [
+    Text({ color: lean ? 'success' : 'warning', children: ['●'] }),
+    Button({ key: 'lean-explore', label: words.join(' · '), plain: true, onPress: say }),
+  ]
+  if (!pending() && view.loaded !== 'custom') parts.push(act(lean ? 'Turn off' : 'Turn on', lean ? 'off' : 'on'))
+  const mine = Box({ key: 'lean-explore', flexDirection: 'row', alignItems: 'center', columnGap: 1, children: parts })
+  return joinBar(below, [mine], { Box, owner: 'lean-explore' })
+}
+
 // Drawings beneath come from next(e) as plain { type, props, children } nodes.
 const SHARED_ROW = 'mods-row'
 
@@ -329,6 +356,12 @@ export const register = on => {
     const below = await next(e)
     if (e.surface !== 'desktop' || (e.props && e.props.hasSurvey)) return below
     return desktopChip($, e, below)
+  })
+
+  on('ui.render', { component: 'AbovePrompt', plugin: 'mods-bar' }, async ($, e, next) => {
+    const below = await next(e)
+    if (e.surface !== 'desktop' || (e.props && e.props.hasSurvey)) return below
+    return barChip($, e, below)
   })
 
   // The terminal gets a short footer label; on desktop the chip says it.
